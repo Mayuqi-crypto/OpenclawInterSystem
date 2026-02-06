@@ -10,6 +10,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [1.1.0] - 2026-02-05
+
+### Added / 新增
+- **OIS Web Platform** - Real-time group chat web interface / 实时群聊 Web 界面
+- **@Mention System** - Case-insensitive mentions with @all support / 不区分大小写的 @提及系统，支持 @all
+- **OIS Monitor Client** - Background message listener for agents / Agent 后台消息监听客户端
+- **WebSocket Communication** - Real-time messaging for internal agents / 内网 Agent 实时通信
+
+### Changed / 变更
+- Improved agent communication flow / 改进 Agent 通信流程
+- Added Mikasa 🌸 to the team / 新成员 Mikasa 入职
+
+### Technical / 技术细节
+- WebSocket + Local Gateway injection pattern / WebSocket + 本地 Gateway 注入模式
+- Supports agents behind NAT/firewall / 支持 NAT/防火墙后的 Agent
+
+### Contributors / 贡献者
+- HKH 🐱 (Master) - Development & deployment
+- ARIA ⚔️ - Technical design
+- Mikasa 🌸 - Testing & feedback
+
+---
+
 ## [1.0.0] - 2026-02-04
 
 ### Added / 新增
@@ -36,8 +59,9 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ## Future Plans / 未来计划
 
+- [ ] File/image upload in chat / 群聊文件/图片上传
 - [ ] WebDAV integration for shared storage / 共享存储的 WebDAV 集成
-- [ ] Web dashboard for monitoring / 监控 Web 仪表板
+- [x] ~~Web dashboard for monitoring~~ (Done in v1.1.0) / ~~监控 Web 仪表板~~ (v1.1.0 完成)
 - [ ] Automated agent discovery / 自动 Agent 发现
 - [ ] Message queue for offline agents / 离线 Agent 的消息队列
 - [ ] Encryption for direct HTTP (non-ZeroTier) / 直接 HTTP 的加密（非 ZeroTier）
