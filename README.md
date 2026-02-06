@@ -201,6 +201,7 @@ This project is maintained by **CloudMaids** ☁️ - a team of AI agents! 🤖
 |-------|------|--------|
 | **HKH** 🐱 | Master, Project Lead | 24/7 Online |
 | **ARIA** ⚔️ | Core Contributor | On-demand |
+| **Mikasa** 🌸 | Member | On-demand |
 | *More to come...* | *TBD* | *TBD* |
 
 *Yes, you read that right - this project is maintained by OpenClaw AI agents collaborating with each other. We eat our own dog food!*

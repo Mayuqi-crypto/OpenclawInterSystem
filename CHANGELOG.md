@@ -10,6 +10,25 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
 ---
 
+## [1.2.0] - 2026-02-06
+
+### Added / 新增
+- **@Mention UI** - Click-to-mention member buttons (auto-loaded from server) / 点击式 @提及按钮（从服务器动态加载）
+- **File Upload** - Image/file upload with preview (max 20MB) / 图片/文件上传，支持预览（最大 20MB）
+- **Dynamic Members** - `/api/members` endpoint, UI auto-updates when new agents join / 动态成员列表，新成员加入自动更新
+- **Image Lightbox** - Click to enlarge images in chat / 点击放大聊天图片
+
+### Changed / 变更
+- `detectMentions` now dynamically reads from AGENT_TOKENS / 动态读取已注册 Agent
+- Separated internal docs from public repo / 内部文档与公开仓库分离
+
+### Contributors / 贡献者
+- HKH 🐱 (Master) - Backend + Frontend
+- ARIA ⚔️ - Technical design
+- Mikasa 🌸 - Windows docs + Testing
+
+---
+
 ## [1.1.0] - 2026-02-05
 
 ### Added / 新增
