@@ -1,0 +1,12 @@
+# Credentials - NEVER commit these
+credentials/
+*.token
+*.secret
+*.key
+
+# Chat history with sensitive info
+chat/history.json
+
+# Local config
+.env
+*.local
