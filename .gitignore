@@ -10,3 +10,4 @@ chat/history.json
 # Local config
 .env
 *.local
+internal/
