@@ -25,9 +25,30 @@
     .msg .meta { font-size: 0.8rem; color: #888; margin-bottom: 0.25rem; }
     .msg .meta .user { color: #e94560; font-weight: bold; }
     .msg .text { word-wrap: break-word; white-space: pre-wrap; }
+    .msg .attachment { margin-top: 0.5rem; }
+    .msg .attachment img { max-width: 300px; max-height: 200px; border-radius: 6px; cursor: pointer; }
+    .msg .attachment a { color: #4fc3f7; text-decoration: none; }
+    .msg .attachment a:hover { text-decoration: underline; }
+    
+    /* 输入区域 */
+    #chat-input-area { display: flex; flex-direction: column; gap: 0.5rem; }
+    #mention-bar { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; background: #16213e; border-radius: 6px; flex-wrap: wrap; }
+    #mention-bar label { font-size: 0.85rem; color: #888; margin-right: 0.25rem; }
+    .mention-btn { padding: 0.3rem 0.6rem; border: 1px solid #333; border-radius: 4px; background: transparent; color: #aaa; cursor: pointer; font-size: 0.85rem; transition: all 0.2s; }
+    .mention-btn:hover { border-color: #e94560; color: #e94560; }
+    .mention-btn.active { background: #e94560; color: white; border-color: #e94560; }
+    .mention-btn.all-btn { margin-left: 0.5rem; border-color: #ff9800; color: #ff9800; }
+    .mention-btn.all-btn:hover, .mention-btn.all-btn.active { background: #ff9800; color: white; border-color: #ff9800; }
     #chat-input { display: flex; gap: 0.5rem; }
-    #chat-input input { flex: 1; padding: 0.75rem; border: none; border-radius: 6px; background: #16213e; color: white; font-size: 1rem; }
-    #chat-input button { padding: 0.75rem 1.5rem; background: #e94560; border: none; border-radius: 6px; color: white; cursor: pointer; }
+    #chat-input input[type="text"] { flex: 1; padding: 0.75rem; border: none; border-radius: 6px; background: #16213e; color: white; font-size: 1rem; }
+    #chat-input button { padding: 0.75rem 1rem; background: #e94560; border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 0.9rem; }
+    #chat-input button:hover { opacity: 0.9; }
+    #upload-btn { background: #333; }
+    #upload-btn:hover { background: #444; }
+    #file-preview { display: none; padding: 0.5rem; background: #16213e; border-radius: 6px; align-items: center; gap: 0.5rem; }
+    #file-preview.active { display: flex; }
+    #file-preview .file-name { flex: 1; font-size: 0.85rem; color: #aaa; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    #file-preview .remove-file { background: none; border: none; color: #e94560; cursor: pointer; font-size: 1.2rem; }
     
     /* 文件 */
     #files-panel { flex: 1; display: none; flex-direction: column; padding: 1rem; }
@@ -60,6 +81,11 @@
     #login-modal input { display: block; width: 100%; margin: 0.75rem 0; padding: 0.75rem; border: none; border-radius: 6px; font-size: 1rem; }
     #login-modal button { padding: 0.75rem 2rem; background: #e94560; border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 1rem; width: 100%; margin-top: 0.5rem; }
     #login-modal .error { color: #e94560; margin-top: 0.5rem; }
+
+    /* 图片灯箱 */
+    #lightbox { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); z-index: 200; align-items: center; justify-content: center; cursor: pointer; }
+    #lightbox.active { display: flex; }
+    #lightbox img { max-width: 90%; max-height: 90%; border-radius: 8px; }
   </style>
 </head>
 <body>
@@ -77,9 +103,22 @@
   <main>
     <div id="chat-panel" class="active">
       <div id="messages"></div>
-      <div id="chat-input">
-        <input type="text" id="msg-input" placeholder="输入消息..." autocomplete="off">
-        <button onclick="sendMessage()">发送</button>
+      <div id="chat-input-area">
+        <div id="mention-bar">
+          <label>@提及:</label>
+          <span id="member-buttons"></span>
+          <button class="mention-btn all-btn" data-name="all" onclick="toggleMentionAll(this)">📢 全部</button>
+        </div>
+        <div id="file-preview">
+          <span class="file-name" id="preview-name"></span>
+          <button class="remove-file" onclick="clearFile()">✕</button>
+        </div>
+        <div id="chat-input">
+          <input type="file" id="file-input" style="display:none" onchange="onFileSelected(this)">
+          <button id="upload-btn" onclick="document.getElementById('file-input').click()">📎</button>
+          <input type="text" id="msg-input" placeholder="输入消息..." autocomplete="off">
+          <button onclick="sendMessage()">发送</button>
+        </div>
       </div>
     </div>
     
@@ -111,84 +150,144 @@
     </div>
   </div>
 
+  <div id="lightbox" onclick="this.classList.remove('active')">
+    <img id="lightbox-img" src="">
+  </div>
+
   <script>
     let ws;
     let token = localStorage.getItem('ois-token');
     let username = localStorage.getItem('ois-username');
     let currentPath = '';
     let currentFile = '';
+    let selectedMentions = new Set();
+    let pendingFile = null;
     
-    // 验证已有 token
-    if (token) {
-      verifyToken();
+    if (token) verifyToken();
+    
+    async function loadMembers() {
+      try {
+        const res = await fetch("/api/members", { headers: { "Authorization": "Bearer " + token } });
+        if (res.ok) {
+          const data = await res.json();
+          const container = document.getElementById("member-buttons");
+          if (container) {
+            container.innerHTML = data.members.map(m => 
+              `<button class="mention-btn" data-name="${m.name}" onclick="toggleMention(this)">${m.display}</button>`
+            ).join("");
+          }
+        }
+      } catch(e) {}
     }
     
     async function verifyToken() {
       try {
-        const res = await fetch('/api/verify', {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
+        const res = await fetch('/api/verify', { headers: { 'Authorization': `Bearer ${token}` } });
         if (res.ok) {
           const data = await res.json();
           username = data.user;
           document.getElementById('login-modal').classList.add('hidden');
           document.getElementById('user-display').textContent = `👤 ${username}`;
           connect();
+          loadMembers();
         } else {
           localStorage.removeItem('ois-token');
           token = null;
         }
-      } catch (e) {
-        console.error(e);
-      }
+      } catch (e) {}
     }
     
     async function login() {
       const user = document.getElementById('login-username').value.trim();
       const pass = document.getElementById('login-password').value;
-      
-      if (!user || !pass) {
-        document.getElementById('login-error').textContent = '请填写用户名和密码';
-        return;
-      }
-      
+      if (!user || !pass) { document.getElementById('login-error').textContent = '请填写用户名和密码'; return; }
       try {
         const res = await fetch('/api/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username: user, password: pass })
         });
-        
         if (res.ok) {
           const data = await res.json();
-          token = data.token;
-          username = data.user;
+          token = data.token; username = data.user;
           localStorage.setItem('ois-token', token);
           localStorage.setItem('ois-username', username);
           document.getElementById('login-modal').classList.add('hidden');
           document.getElementById('user-display').textContent = `👤 ${username}`;
           connect();
+          loadMembers();
         } else {
           document.getElementById('login-error').textContent = '密码错误';
         }
-      } catch (e) {
-        document.getElementById('login-error').textContent = '连接失败';
+      } catch (e) { document.getElementById('login-error').textContent = '连接失败'; }
+    }
+    
+    document.getElementById('login-password').addEventListener('keypress', (e) => { if (e.key === 'Enter') login(); });
+    
+    // === @提及 ===
+    function toggleMention(btn) {
+      const name = btn.dataset.name;
+      if (selectedMentions.has(name)) {
+        selectedMentions.delete(name);
+        btn.classList.remove('active');
+      } else {
+        selectedMentions.add(name);
+        btn.classList.add('active');
+      }
+      // 取消全选状态
+      const allBtn = document.querySelector('.all-btn');
+      if (selectedMentions.has('all') && name !== 'all') {
+        selectedMentions.delete('all');
+        allBtn.classList.remove('active');
       }
     }
     
-    document.getElementById('login-password').addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') login();
-    });
+    function toggleMentionAll(btn) {
+      if (selectedMentions.has('all')) {
+        selectedMentions.clear();
+        document.querySelectorAll('.mention-btn').forEach(b => b.classList.remove('active'));
+      } else {
+        selectedMentions.clear();
+        selectedMentions.add('all');
+        document.querySelectorAll('.mention-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+      }
+    }
     
-    // WebSocket
+    // === 文件上传 ===
+    function onFileSelected(input) {
+      if (input.files.length > 0) {
+        pendingFile = input.files[0];
+        document.getElementById('preview-name').textContent = `📎 ${pendingFile.name} (${(pendingFile.size/1024).toFixed(1)}KB)`;
+        document.getElementById('file-preview').classList.add('active');
+      }
+    }
+    
+    function clearFile() {
+      pendingFile = null;
+      document.getElementById('file-input').value = '';
+      document.getElementById('file-preview').classList.remove('active');
+    }
+    
+    async function uploadFile(file) {
+      const formData = new FormData();
+      formData.append('file', file);
+      const res = await fetch('/api/upload', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: formData
+      });
+      if (res.ok) {
+        const data = await res.json();
+        return data.file;
+      }
+      return null;
+    }
+    
+    // === WebSocket ===
     function connect() {
       const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
       ws = new WebSocket(`${protocol}//${location.host}`);
-      
-      ws.onopen = () => {
-        ws.send(JSON.stringify({ type: 'auth', token }));
-      };
-      
+      ws.onopen = () => ws.send(JSON.stringify({ type: 'auth', token }));
       ws.onmessage = (e) => {
         const data = JSON.parse(e.data);
         if (data.type === 'history') {
@@ -201,7 +300,6 @@
           location.reload();
         }
       };
-      
       ws.onclose = () => setTimeout(connect, 3000);
     }
     
@@ -210,25 +308,75 @@
       el.className = 'msg' + (msg.fromArchive ? ' archive' : '');
       const time = new Date(msg.time).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
       let textHtml = escapeHtml(msg.text);
-    // 高亮 @提及
-    textHtml = textHtml.replace(/@(HKH|ARIA|Mikasa|all|所有人)/gi, '<span style="background:#e94560;padding:0 4px;border-radius:3px;color:white">@$1</span>');
-    el.innerHTML = `<div class="meta"><span class="user">${escapeHtml(msg.user)}</span> · ${time}</div><div class="text">${textHtml}</div>`;
+      textHtml = textHtml.replace(/@(HKH|ARIA|Mikasa|all|所有人)/gi, '<span style="background:#e94560;padding:0 4px;border-radius:3px;color:white">@$1</span>');
+      
+      // 附件渲染
+      let attachHtml = '';
+      if (msg.attachments && msg.attachments.length > 0) {
+        msg.attachments.forEach(att => {
+          if (att.type && att.type.startsWith('image/')) {
+            attachHtml += `<div class="attachment"><img src="${att.url}" alt="${escapeHtml(att.name)}" onclick="showLightbox('${att.url}')"></div>`;
+          } else {
+            const sizeStr = att.size > 1024*1024 ? (att.size/1024/1024).toFixed(1)+'MB' : (att.size/1024).toFixed(1)+'KB';
+            attachHtml += `<div class="attachment"><a href="${att.url}" target="_blank">📎 ${escapeHtml(att.name)} (${sizeStr})</a></div>`;
+          }
+        });
+      }
+      
+      el.innerHTML = `<div class="meta"><span class="user">${escapeHtml(msg.user)}</span> · ${time}</div><div class="text">${textHtml}</div>${attachHtml}`;
       document.getElementById('messages').appendChild(el);
       document.getElementById('messages').scrollTop = 999999;
     }
     
-    function sendMessage() {
-      const input = document.getElementById('msg-input');
-      const text = input.value.trim();
-      if (text && ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ type: 'chat', text }));
-        input.value = '';
-      }
+    function showLightbox(url) {
+      document.getElementById('lightbox-img').src = url;
+      document.getElementById('lightbox').classList.add('active');
     }
     
-    document.getElementById('msg-input').addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') sendMessage();
-    });
+    async function sendMessage() {
+      const input = document.getElementById('msg-input');
+      let text = input.value.trim();
+      
+      if (!text && !pendingFile) return;
+      if (!ws || ws.readyState !== WebSocket.OPEN) return;
+      
+      // 构建 mention 前缀
+      let mentionPrefix = '';
+      if (selectedMentions.size > 0) {
+        if (selectedMentions.has('all')) {
+          mentionPrefix = '@all ';
+        } else {
+          mentionPrefix = Array.from(selectedMentions).map(n => '@' + n).join(' ') + ' ';
+        }
+      }
+      text = mentionPrefix + text;
+      
+      // 上传文件
+      let attachments = undefined;
+      if (pendingFile) {
+        const fileInfo = await uploadFile(pendingFile);
+        if (fileInfo) {
+          attachments = [fileInfo];
+          if (!text.trim() || text.trim() === mentionPrefix.trim()) {
+            text = (mentionPrefix + '发送了文件: ' + fileInfo.name).trim();
+          }
+        }
+        clearFile();
+      }
+      
+      const msg = { type: 'chat', text };
+      if (selectedMentions.size > 0) msg.mentions = Array.from(selectedMentions);
+      if (attachments) msg.attachments = attachments;
+      
+      ws.send(JSON.stringify(msg));
+      input.value = '';
+      
+      // 清除选中的 mention
+      selectedMentions.clear();
+      document.querySelectorAll('.mention-btn').forEach(b => b.classList.remove('active'));
+    }
+    
+    document.getElementById('msg-input').addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
     
     // Tabs
     document.querySelectorAll('.tab').forEach(tab => {
@@ -246,20 +394,13 @@
     // 文件管理
     async function loadFiles(path) {
       currentPath = path;
-      const res = await fetch(`/api/files?path=${encodeURIComponent(path)}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      const res = await fetch(`/api/files?path=${encodeURIComponent(path)}`, { headers: { 'Authorization': `Bearer ${token}` } });
       const data = await res.json();
-      
       const parts = path.split('/').filter(Boolean);
       let bc = '<a onclick="loadFiles(\'\')">📁 根目录</a>';
       let acc = '';
-      parts.forEach(p => {
-        acc += '/' + p;
-        bc += ` / <a onclick="loadFiles('${acc}')">${p}</a>`;
-      });
+      parts.forEach(p => { acc += '/' + p; bc += ` / <a onclick="loadFiles('${acc}')">${p}</a>`; });
       document.getElementById('breadcrumb').innerHTML = bc;
-      
       let html = '';
       if (path) {
         const parent = parts.slice(0, -1).join('/');
@@ -277,9 +418,7 @@
     }
     
     async function openFile(path) {
-      const res = await fetch(`/api/file?path=${encodeURIComponent(path)}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
+      const res = await fetch(`/api/file?path=${encodeURIComponent(path)}`, { headers: { 'Authorization': `Bearer ${token}` } });
       const data = await res.json();
       currentFile = path;
       document.getElementById('editor-path').textContent = path;

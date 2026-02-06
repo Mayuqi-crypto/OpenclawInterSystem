@@ -12,18 +12,38 @@ const wss = new WebSocket.Server({ server });
 
 const OIS_ROOT = '/data/data/OpenclawInterSystem';
 const PORT = 8800;
+const UPLOAD_DIR = '/tmp/ois-uploads/';
 
-const PASSWORD = 'cloudmaids2026';
+const PASSWORD = 'YOUR_PASSWORD_HERE';
 const AGENT_TOKENS = {
-  'hkh-token-2026': 'HKH 🐱',
-  'aria-token-2026': 'ARIA ⚔️',
-  'mikasa-token-2026': 'Mikasa 🌸'
+  'YOUR_HKH_TOKEN': 'HKH 🐱',
+  'YOUR_ARIA_TOKEN': 'ARIA ⚔️',
+  'YOUR_MIKASA_TOKEN': 'Mikasa 🌸'
 };
 const sessions = new Map();
 
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
-const upload = multer({ dest: '/tmp/ois-uploads/' });
+
+// === 文件上传配置 ===
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
+    cb(null, UPLOAD_DIR);
+  },
+  filename: (req, file, cb) => {
+    const ext = path.extname(file.originalname);
+    const name = crypto.randomBytes(16).toString('hex') + ext;
+    cb(null, name);
+  }
+});
+const upload = multer({
+  storage,
+  limits: { fileSize: 20 * 1024 * 1024 } // 20MB
+});
+
+// === 静态文件服务 - 上传的文件 ===
+app.use('/uploads', express.static(UPLOAD_DIR));
 
 // === 认证 ===
 app.post('/api/login', (req, res) => {
@@ -47,11 +67,44 @@ app.get('/api/verify', (req, res) => {
   }
 });
 
+
+// === 成员列表 API (动态从 AGENT_TOKENS 生成) ===
+app.get("/api/members", (req, res) => {
+  if (!getUser(req)) return res.status(401).json({ error: "Unauthorized" });
+  const members = Object.entries(AGENT_TOKENS).map(([token, display]) => {
+    const name = display.replace(/\s.*/, "");
+    return { name, display };
+  });
+  res.json({ members });
+});
+
 function getUser(req) {
   const token = req.headers.authorization?.replace('Bearer ', '');
   const session = sessions.get(token);
   return session && session.expires > Date.now() ? session.user : null;
 }
+
+// === 文件上传 API ===
+app.post('/api/upload', (req, res) => {
+  if (!getUser(req)) return res.status(401).json({ error: 'Unauthorized' });
+  
+  upload.single('file')(req, res, (err) => {
+    if (err) {
+      console.error('Upload error:', err);
+      return res.status(500).json({ error: err.message });
+    }
+    if (!req.file) return res.status(400).json({ error: 'No file uploaded' });
+    
+    const fileUrl = `/uploads/${req.file.filename}`;
+    const fileInfo = {
+      url: fileUrl,
+      originalName: req.file.originalname,
+      mimeType: req.file.mimetype,
+      size: req.file.size
+    };
+    res.json({ ok: true, file: fileInfo });
+  });
+});
 
 // === 聊天 ===
 const chatHistory = [];
@@ -182,7 +235,8 @@ wss.on('connection', (ws) => {
           user: wsUser,
           text: msg.text,
           time: new Date().toISOString(),
-          mentions: mentions.length > 0 ? mentions : undefined
+          mentions: mentions.length > 0 ? mentions : undefined,
+          attachments: msg.attachments && msg.attachments.length > 0 ? msg.attachments : undefined
         };
         chatHistory.push(chatMsg);
         saveChat();
