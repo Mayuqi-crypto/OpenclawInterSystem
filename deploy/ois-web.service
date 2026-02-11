@@ -17,11 +17,6 @@ StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=ois-web
 
-# Security hardening
-NoNewPrivileges=true
-ProtectSystem=strict
-ReadWritePaths=/data/data/OpenclawInterSystem
-ReadWritePaths=/tmp/ois-uploads
 
 [Install]
 WantedBy=multi-user.target
