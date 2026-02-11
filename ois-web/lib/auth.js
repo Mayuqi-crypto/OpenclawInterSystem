@@ -30,6 +30,7 @@ function requireAuth(req, res, next) {
   next();
 }
 
+// 验证 Agent Token，返回 { id, displayName } 或 null
 function verifyAgentToken(token) {
   return config.AGENT_TOKENS[token] || null;
 }

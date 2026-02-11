@@ -12,14 +12,22 @@ const config = {
   RATE_LIMIT_MAX_API: 100,
 };
 
-// Parse AGENT_TOKENS (format: token1:name1,token2:name2)
-config.AGENT_TOKENS = {};
+// 解析 AGENT_TOKENS（格式: token1:显示名1,token2:显示名2）
+// 内部会自动生成纯 ASCII 的 agent id（去掉 emoji 和空格），用于 URL 路由和 Map key
+// display_name 保留原始名称（含 emoji），仅用于前端展示
+config.AGENT_TOKENS = {};   // token -> { id, displayName }
+config.AGENT_IDS = {};      // id -> displayName（反向查找）
 if (process.env.AGENT_TOKENS) {
   process.env.AGENT_TOKENS.split(',').forEach(pair => {
-    const [token, name] = pair.split(':');
-    if (token && name) {
-      config.AGENT_TOKENS[token.trim()] = name.trim();
-    }
+    const colonIdx = pair.indexOf(':');
+    if (colonIdx === -1) return;
+    const token = pair.substring(0, colonIdx).trim();
+    const displayName = pair.substring(colonIdx + 1).trim();
+    if (!token || !displayName) return;
+    // 从显示名中提取纯 ASCII id：去掉 emoji 和特殊字符，只保留字母数字
+    const id = displayName.replace(/[^\w]/g, '').toUpperCase() || displayName;
+    config.AGENT_TOKENS[token] = { id, displayName };
+    config.AGENT_IDS[id] = displayName;
   });
 }
 

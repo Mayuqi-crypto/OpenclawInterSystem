@@ -76,7 +76,8 @@ async function loadMembers() {
       const container = document.getElementById('member-buttons');
       if (container) {
         container.innerHTML = data.members.map(m => {
-          const status = OIS.agentStatuses[m.name] || 'offline';
+          // 用纯 ASCII id 查找在线状态，用 name 作为 @提及的值
+          const status = OIS.agentStatuses[m.id || m.name] || 'offline';
           return `<button class="mention-btn" data-name="${m.name}" onclick="toggleMention(this)"><span class="conn-status ${status}"></span>${m.display}</button>`;
         }).join('');
       }

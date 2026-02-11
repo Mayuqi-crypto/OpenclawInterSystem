@@ -1,5 +1,6 @@
-// OIS Health Dashboard module
+// OIS 健康监控面板模块
 
+// 加载 Agent 健康状态仪表盘
 async function loadHealthDashboard() {
   try {
     const res = await apiFetch('/api/agents/status');
@@ -17,10 +18,14 @@ async function loadHealthDashboard() {
       const status = agent.status || 'offline';
       const lastSeen = agent.last_seen ? formatDate(agent.last_seen) : '从未';
       const connectedAt = agent.connected_at ? formatDate(agent.connected_at) : '-';
+      // agent.name 是纯 ASCII id（如 "ARIA"），安全用于 URL 和 HTML 属性
+      // agent.display_name 是带 emoji 的展示名（如 "ARIA ⚔️"），仅用于显示
+      const safeId = escapeHtml(agent.name);
+      const displayName = escapeHtml(agent.display_name || agent.name);
       return `
         <div class="agent-card">
           <div class="status-dot ${status}"></div>
-          <div class="agent-name">${escapeHtml(agent.display_name || agent.name)}</div>
+          <div class="agent-name">${displayName}</div>
           <div class="agent-meta">
             <span>状态: ${status === 'online' ? '在线' : '离线'}</span>
             <span>最后活跃: ${lastSeen}</span>
@@ -28,9 +33,9 @@ async function loadHealthDashboard() {
             <span>错误次数: ${agent.error_count || 0}</span>
           </div>
           <div class="agent-actions">
-            <button onclick="sendAgentCmd('${agent.name}', 'ping')">Ping</button>
-            <button onclick="sendAgentCmd('${agent.name}', 'status')">状态</button>
-            <button onclick="sendAgentCmd('${agent.name}', 'restart')">重启</button>
+            <button onclick="sendAgentCmd('${safeId}', 'ping')">Ping</button>
+            <button onclick="sendAgentCmd('${safeId}', 'status')">状态</button>
+            <button onclick="sendAgentCmd('${safeId}', 'restart')">重启</button>
           </div>
         </div>
       `;
@@ -38,9 +43,11 @@ async function loadHealthDashboard() {
   } catch (e) {}
 }
 
-async function sendAgentCmd(agentName, cmd) {
+// 向指定 Agent 发送远程命令
+// agentId 是纯 ASCII id（如 "ARIA"），不含 emoji，安全用于 URL
+async function sendAgentCmd(agentId, cmd) {
   try {
-    const res = await apiFetch(`/api/agents/${encodeURIComponent(agentName)}/command`, {
+    const res = await apiFetch(`/api/agents/${encodeURIComponent(agentId)}/command`, {
       method: 'POST',
       body: JSON.stringify({ cmd })
     });
