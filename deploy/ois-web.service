@@ -1,0 +1,27 @@
+[Unit]
+Description=OIS - OpenClaw Inter-System Web Platform
+Documentation=https://github.com/Mayuqi-crypto/OpenclawInterSystem
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/data/data/OpenclawInterSystem/ois-web
+ExecStart=/usr/bin/node server.js
+Restart=always
+RestartSec=5
+Environment=NODE_ENV=production
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ois-web
+
+# Security hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/data/data/OpenclawInterSystem
+ReadWritePaths=/tmp/ois-uploads
+
+[Install]
+WantedBy=multi-user.target
