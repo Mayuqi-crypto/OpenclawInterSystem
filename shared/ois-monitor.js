@@ -6,15 +6,16 @@ const AGENT_TOKEN = process.env.OIS_AGENT_TOKEN || "your-token-here";
 const GATEWAY_PORT = parseInt(process.env.GATEWAY_PORT || "18783");
 const GATEWAY_AUTH = process.env.GATEWAY_TOKEN || "your-gateway-token-here";
 const CONTEXT_LINES = parseInt(process.env.OIS_CONTEXT_COUNT || "10");
+const MY_NAME = process.env.OIS_AGENT_NAME || "ARIA";
 
 let ws;
 let authenticated = false;
 let recentMessages = [];
 
-// 保活：防止 Node 进程退出
+// 保活
 setInterval(() => {}, 60000);
 
-// 捕获未处理异常，防止崩溃
+// 防崩溃
 process.on("uncaughtException", (e) => {
   console.error("[FATAL] uncaughtException:", e.message);
 });
@@ -25,14 +26,10 @@ process.on("unhandledRejection", (e) => {
 function wakeGateway(message) {
   const data = JSON.stringify({
     tool: "cron",
-    args: {
-      action: "wake",
-      text: `[OIS群聊] ${message}`,
-      mode: "now"
-    }
+    args: { action: "wake", text: `[OIS群聊] ${message}`, mode: "now" }
   });
-  
-  const options = {
+
+  const req = http.request({
     hostname: "127.0.0.1",
     port: GATEWAY_PORT,
     path: "/tools/invoke",
@@ -43,9 +40,7 @@ function wakeGateway(message) {
       "Content-Length": Buffer.byteLength(data),
       "Authorization": `Bearer ${GATEWAY_AUTH}`
     }
-  };
-  
-  const req = http.request(options, (res) => {
+  }, (res) => {
     let body = "";
     res.on("data", chunk => body += chunk);
     res.on("end", () => {
@@ -70,9 +65,10 @@ function sendToOIS(text) {
 
 function checkMention(msg) {
   if (!msg.mentions || !Array.isArray(msg.mentions)) return false;
+  const myName = MY_NAME.toLowerCase();
   return msg.mentions.some(m => {
     const lower = String(m).toLowerCase();
-    return lower === "aria" || lower === "all";
+    return lower === myName || lower === "all";
   });
 }
 
@@ -95,9 +91,43 @@ function addToRecent(user, text, attachments) {
   }
 }
 
+// === 远程命令处理 ===
+function handleCommand(msg) {
+  const { id, cmd, payload } = msg;
+  console.log(`[CMD] 收到命令: ${cmd} (id=${id})`);
+
+  let result;
+  switch (cmd) {
+    case "ping":
+      result = { ok: true, pong: true, time: new Date().toISOString() };
+      break;
+    case "status":
+      result = {
+        ok: true,
+        agent: MY_NAME,
+        uptime: process.uptime(),
+        memory: Math.round(process.memoryUsage().rss / 1024 / 1024) + "MB",
+        connected: authenticated,
+        recentMessages: recentMessages.length,
+        time: new Date().toISOString(),
+      };
+      break;
+    case "restart":
+      result = { ok: true, message: "Restarting in 2 seconds..." };
+      // 先回复，再退出（PM2/systemd 会重启）
+      ws.send(JSON.stringify({ type: "command_ack", id, result }));
+      setTimeout(() => process.exit(0), 2000);
+      return;
+    default:
+      result = { ok: false, error: `Unknown command: ${cmd}` };
+  }
+
+  ws.send(JSON.stringify({ type: "command_ack", id, result }));
+}
+
 function connect() {
   console.log("[OIS] 连接中...", new Date().toISOString());
-  
+
   try {
     ws = new WebSocket(OIS_URL);
   } catch (e) {
@@ -105,12 +135,12 @@ function connect() {
     setTimeout(connect, 5000);
     return;
   }
-  
+
   ws.on("open", () => {
     console.log("[OIS] 已连接");
     ws.send(JSON.stringify({ type: "agent_auth", token: AGENT_TOKEN }));
   });
-  
+
   ws.on("message", (data) => {
     let msg;
     try {
@@ -119,7 +149,7 @@ function connect() {
       console.error("[OIS] JSON解析失败:", e.message);
       return;
     }
-    
+
     if (msg.type === "auth_ok") {
       authenticated = true;
       console.log("[OIS] 认证成功:", msg.user);
@@ -136,22 +166,25 @@ function connect() {
       });
       console.log("[OIS] 历史消息:", msgs.length, "| 缓存上下文:", recentMessages.length);
     }
+    else if (msg.type === "command") {
+      handleCommand(msg);
+    }
     else if (msg.type === "message") {
       const m = msg.message;
       if (!m) return;
-      
+
       const user = m.user || "?";
       const text = m.text || "";
       const attachments = m.attachments || [];
-      
+
       let logLine = `[${user}] ${text.substring(0, 80)}`;
       if (attachments.length) logLine += ` [附件x${attachments.length}]`;
       console.log(logLine);
-      
+
       addToRecent(user, text, attachments);
-      
-      if (user.toLowerCase().includes("aria")) return;
-      
+
+      if (user.toLowerCase().includes(MY_NAME.toLowerCase())) return;
+
       if (checkMention(m)) {
         console.log(">>> 收到提及! mentions:", m.mentions);
         let wakeText = `${user} 说: ${text}`;
@@ -164,15 +197,15 @@ function connect() {
       }
     }
   });
-  
+
   ws.on("ping", () => {});
-  
+
   ws.on("close", (code) => {
     authenticated = false;
     console.log(`[OIS] 断开 (code=${code}), 5秒后重连...`);
     setTimeout(connect, 5000);
   });
-  
+
   ws.on("error", (e) => {
     console.error("[OIS] 错误:", e.message);
   });
@@ -180,9 +213,10 @@ function connect() {
 
 module.exports = { sendToOIS };
 
-console.log("=== ARIA OIS Monitor v6.1 ===");
+console.log(`=== OIS Monitor v7.0 (${MY_NAME}) ===`);
 console.log("时间:", new Date().toISOString());
-console.log("Gateway:", GATEWAY_PORT, "(wake + 认证 + 上下文)");
+console.log("Gateway:", GATEWAY_PORT);
 console.log("OIS:", OIS_URL);
 console.log("上下文条数:", CONTEXT_LINES);
+console.log("支持远程命令: ping, status, restart");
 connect();
