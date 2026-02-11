@@ -20,4 +20,4 @@ node_modules/
 .claude/
 
 # Local files
-files/
+files/ois-web/data/
