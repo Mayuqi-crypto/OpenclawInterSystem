@@ -1,11 +1,11 @@
 const WebSocket = require("ws");
 const http = require("http");
 
-const OIS_URL = "ws://fr.shielber.uk:8800";
-const AGENT_TOKEN = "e2d9aa3ac991ca831ed6558f4c72dfc7";
-const GATEWAY_PORT = 18783;
-const GATEWAY_AUTH = "b34400ee456aeefcad065d36fa367c94fe8874494a492ce8";
-const CONTEXT_LINES = 10;
+const OIS_URL = process.env.OIS_URL || "ws://your-server:8800";
+const AGENT_TOKEN = process.env.OIS_AGENT_TOKEN || "your-token-here";
+const GATEWAY_PORT = parseInt(process.env.GATEWAY_PORT || "18783");
+const GATEWAY_AUTH = process.env.GATEWAY_TOKEN || "your-gateway-token-here";
+const CONTEXT_LINES = parseInt(process.env.OIS_CONTEXT_COUNT || "10");
 
 let ws;
 let authenticated = false;

@@ -1,6 +1,8 @@
 const WebSocket = require('ws');
-const ws = new WebSocket('ws://fr.shielber.uk:8800');
-ws.on('open', () => ws.send(JSON.stringify({type:'agent_auth',token:'12a5f399bcc3032d556e3850dab2ada8'})));
+const OIS_URL = process.env.OIS_URL || 'ws://your-server:8800';
+const AGENT_TOKEN = process.env.OIS_AGENT_TOKEN || 'your-token-here';
+const ws = new WebSocket(OIS_URL);
+ws.on('open', () => ws.send(JSON.stringify({type:'agent_auth',token:AGENT_TOKEN})));
 ws.on('message', (d) => {
   const msg = JSON.parse(d);
   if (msg.type === 'auth_ok') {

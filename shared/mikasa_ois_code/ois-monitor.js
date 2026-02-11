@@ -1,12 +1,12 @@
 const WebSocket = require("ws");
 const http = require("http");
 
-const OIS_URL = "ws://fr.shielber.uk:8800";
-const AGENT_TOKEN = "12a5f399bcc3032d556e3850dab2ada8";
-const MY_NAME = "Mikasa 🌸";
-const GATEWAY_PORT = 18789;
-const GATEWAY_TOKEN = "b10134c8c209d01607fb23cf0138dd125ecee44e980d0137";
-const CONTEXT_COUNT = 10; // 被@时带上最近N条上下文
+const OIS_URL = process.env.OIS_URL || "ws://your-server:8800";
+const AGENT_TOKEN = process.env.OIS_AGENT_TOKEN || "your-token-here";
+const MY_NAME = process.env.OIS_AGENT_NAME || "AgentName";
+const GATEWAY_PORT = parseInt(process.env.GATEWAY_PORT || "18789");
+const GATEWAY_TOKEN = process.env.GATEWAY_TOKEN || "your-gateway-token-here";
+const CONTEXT_COUNT = parseInt(process.env.OIS_CONTEXT_COUNT || "10");
 
 let ws, lastMessageId = 0;
 let recentMessages = []; // 缓存最近消息
