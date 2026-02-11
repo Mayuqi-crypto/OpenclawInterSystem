@@ -1,12 +1,15 @@
 const WebSocket = require("ws");
 const http = require("http");
 
+// === 配置（全部从环境变量读取） ===
 const OIS_URL = process.env.OIS_URL || "ws://your-server:8800";
 const AGENT_TOKEN = process.env.OIS_AGENT_TOKEN || "your-token-here";
+const MY_NAME = process.env.OIS_AGENT_NAME || "Agent";
 const GATEWAY_PORT = parseInt(process.env.GATEWAY_PORT || "18783");
-const GATEWAY_AUTH = process.env.GATEWAY_TOKEN || "your-gateway-token-here";
+const GATEWAY_TOKEN = process.env.GATEWAY_TOKEN || "your-gateway-token-here";
 const CONTEXT_LINES = parseInt(process.env.OIS_CONTEXT_COUNT || "10");
-const MY_NAME = process.env.OIS_AGENT_NAME || "ARIA";
+// Gateway 模式: "wake" (cron wake) 或 "inject" (sessions_send)
+const GATEWAY_MODE = process.env.OIS_GATEWAY_MODE || "wake";
 
 let ws;
 let authenticated = false;
@@ -23,11 +26,21 @@ process.on("unhandledRejection", (e) => {
   console.error("[FATAL] unhandledRejection:", e);
 });
 
-function wakeGateway(message) {
-  const data = JSON.stringify({
-    tool: "cron",
-    args: { action: "wake", text: `[OIS群聊] ${message}`, mode: "now" }
-  });
+// === Gateway 通知 ===
+function notifyGateway(message) {
+  let payload;
+
+  if (GATEWAY_MODE === "inject") {
+    payload = JSON.stringify({
+      tool: "sessions_send",
+      args: { sessionKey: "agent:main:main", message }
+    });
+  } else {
+    payload = JSON.stringify({
+      tool: "cron",
+      args: { action: "wake", text: message, mode: "now" }
+    });
+  }
 
   const req = http.request({
     hostname: "127.0.0.1",
@@ -37,22 +50,23 @@ function wakeGateway(message) {
     timeout: 5000,
     headers: {
       "Content-Type": "application/json",
-      "Content-Length": Buffer.byteLength(data),
-      "Authorization": `Bearer ${GATEWAY_AUTH}`
+      "Content-Length": Buffer.byteLength(payload),
+      "Authorization": `Bearer ${GATEWAY_TOKEN}`
     }
   }, (res) => {
     let body = "";
     res.on("data", chunk => body += chunk);
     res.on("end", () => {
-      console.log("[Gateway] wake:", res.statusCode, body.substring(0, 100));
+      console.log("[Gateway]", res.statusCode, body.substring(0, 100));
     });
   });
   req.setTimeout(5000, () => { req.destroy(); console.error("[Gateway] 超时"); });
   req.on("error", (e) => console.error("[Gateway] 错误:", e.message));
-  req.write(data);
+  req.write(payload);
   req.end();
 }
 
+// === 发消息到 OIS ===
 function sendToOIS(text) {
   if (ws && ws.readyState === WebSocket.OPEN && authenticated) {
     ws.send(JSON.stringify({ type: "chat", text }));
@@ -63,6 +77,7 @@ function sendToOIS(text) {
   return false;
 }
 
+// === 提及检测 ===
 function checkMention(msg) {
   if (!msg.mentions || !Array.isArray(msg.mentions)) return false;
   const myName = MY_NAME.toLowerCase();
@@ -72,6 +87,7 @@ function checkMention(msg) {
   });
 }
 
+// === 上下文管理 ===
 function formatContext() {
   if (recentMessages.length === 0) return "";
   const lines = recentMessages.map(m => {
@@ -93,7 +109,7 @@ function addToRecent(user, text, attachments) {
 
 // === 远程命令处理 ===
 function handleCommand(msg) {
-  const { id, cmd, payload } = msg;
+  const { id, cmd } = msg;
   console.log(`[CMD] 收到命令: ${cmd} (id=${id})`);
 
   let result;
@@ -109,12 +125,13 @@ function handleCommand(msg) {
         memory: Math.round(process.memoryUsage().rss / 1024 / 1024) + "MB",
         connected: authenticated,
         recentMessages: recentMessages.length,
+        gatewayMode: GATEWAY_MODE,
+        gatewayPort: GATEWAY_PORT,
         time: new Date().toISOString(),
       };
       break;
     case "restart":
       result = { ok: true, message: "Restarting in 2 seconds..." };
-      // 先回复，再退出（PM2/systemd 会重启）
       ws.send(JSON.stringify({ type: "command_ack", id, result }));
       setTimeout(() => process.exit(0), 2000);
       return;
@@ -125,6 +142,7 @@ function handleCommand(msg) {
   ws.send(JSON.stringify({ type: "command_ack", id, result }));
 }
 
+// === WebSocket 连接 ===
 function connect() {
   console.log("[OIS] 连接中...", new Date().toISOString());
 
@@ -160,11 +178,10 @@ function connect() {
     }
     else if (msg.type === "history") {
       const msgs = msg.messages || [];
-      const recent = msgs.slice(-CONTEXT_LINES);
-      recent.forEach(m => {
+      msgs.slice(-CONTEXT_LINES).forEach(m => {
         addToRecent(m.user || "?", m.text || "", m.attachments || []);
       });
-      console.log("[OIS] 历史消息:", msgs.length, "| 缓存上下文:", recentMessages.length);
+      console.log("[OIS] 历史消息:", msgs.length, "| 缓存:", recentMessages.length);
     }
     else if (msg.type === "command") {
       handleCommand(msg);
@@ -183,17 +200,18 @@ function connect() {
 
       addToRecent(user, text, attachments);
 
+      // 忽略自己发的消息
       if (user.toLowerCase().includes(MY_NAME.toLowerCase())) return;
 
       if (checkMention(m)) {
         console.log(">>> 收到提及! mentions:", m.mentions);
-        let wakeText = `${user} 说: ${text}`;
+        let wakeText = `[OIS群聊] ${user} 说: ${text}`;
         if (attachments.length) {
           const urls = attachments.map(a => a.url || a.filename || "文件").join(", ");
           wakeText += `\n附件: ${urls}`;
         }
         wakeText += formatContext();
-        wakeGateway(wakeText);
+        notifyGateway(wakeText);
       }
     }
   });
@@ -213,10 +231,10 @@ function connect() {
 
 module.exports = { sendToOIS };
 
-console.log(`=== OIS Monitor v7.0 (${MY_NAME}) ===`);
-console.log("时间:", new Date().toISOString());
-console.log("Gateway:", GATEWAY_PORT);
-console.log("OIS:", OIS_URL);
-console.log("上下文条数:", CONTEXT_LINES);
-console.log("支持远程命令: ping, status, restart");
+console.log(`=== OIS Monitor v7.0 ===`);
+console.log(`Agent: ${MY_NAME}`);
+console.log(`OIS: ${OIS_URL}`);
+console.log(`Gateway: 127.0.0.1:${GATEWAY_PORT} (${GATEWAY_MODE})`);
+console.log(`上下文: ${CONTEXT_LINES} 条`);
+console.log(`命令: ping, status, restart`);
 connect();
