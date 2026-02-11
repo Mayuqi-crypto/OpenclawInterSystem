@@ -24,6 +24,13 @@
     .msg.archive { opacity: 0.7; border-left: 3px solid #444; }
     .msg .meta { font-size: 0.8rem; color: #888; margin-bottom: 0.25rem; }
     .msg .meta .user { color: #e94560; font-weight: bold; }
+    .msg.agent {
+      background: #0d1222; /* 不同的背景色 */
+      border-left: 3px solid #4fc3f7; /* 强调边框 */
+    }
+    .msg.agent .meta .user {
+      color: #4fc3f7; /* Agent 用户名颜色 */
+    }
     .msg .text { word-wrap: break-word; white-space: pre-wrap; }
     .msg .attachment { margin-top: 0.5rem; }
     .msg .attachment img { max-width: 300px; max-height: 200px; border-radius: 6px; cursor: pointer; }
@@ -31,8 +38,33 @@
     .msg .attachment a:hover { text-decoration: underline; }
     
     /* 输入区域 */
-    #chat-input-area { display: flex; flex-direction: column; gap: 0.5rem; }
+    #chat-input-area { display: flex; flex-direction: column; gap: 0.5rem; position: relative; }
     #mention-bar { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; background: #16213e; border-radius: 6px; flex-wrap: wrap; }
+    #mention-suggestions {
+      position: absolute; /* 相对于父元素定位 */
+      bottom: 100%; /* 出现在输入框上方 */
+      left: 0;
+      right: 0;
+      max-height: 200px;
+      overflow-y: auto;
+      background: #0f0f23;
+      border-radius: 6px;
+      box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.3);
+      z-index: 10;
+      padding: 0.5rem 0;
+    }
+    #mention-suggestions.hidden {
+      display: none;
+    }
+    .mention-suggestion-item {
+      padding: 0.5rem 1rem;
+      cursor: pointer;
+      color: #eee;
+    }
+    .mention-suggestion-item:hover, .mention-suggestion-item.active {
+      background: #e94560;
+      color: white;
+    }
     #mention-bar label { font-size: 0.85rem; color: #888; margin-right: 0.25rem; }
     .mention-btn { padding: 0.3rem 0.6rem; border: 1px solid #333; border-radius: 4px; background: transparent; color: #aaa; cursor: pointer; font-size: 0.85rem; transition: all 0.2s; }
     .mention-btn:hover { border-color: #e94560; color: #e94560; }
@@ -41,6 +73,12 @@
     .mention-btn.all-btn:hover, .mention-btn.all-btn.active { background: #ff9800; color: white; border-color: #ff9800; }
     #chat-input { display: flex; gap: 0.5rem; }
     #chat-input input[type="text"] { flex: 1; padding: 0.75rem; border: none; border-radius: 6px; background: #16213e; color: white; font-size: 1rem; }
+    #chat-input textarea#msg-input {
+      flex: 1; padding: 0.75rem; border: none; border-radius: 6px; background: #16213e; color: white; font-size: 1rem;
+      min-height: 40px; /* 保持与 input 差不多的高度 */
+      resize: vertical; /* 允许垂直拖拽调整大小 */
+      overflow-y: auto; /* 超出自动滚动 */
+    }
     #chat-input button { padding: 0.75rem 1rem; background: #e94560; border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 0.9rem; }
     #chat-input button:hover { opacity: 0.9; }
     #upload-btn { background: #333; }
@@ -86,6 +124,57 @@
     #lightbox { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); z-index: 200; align-items: center; justify-content: center; cursor: pointer; }
     #lightbox.active { display: flex; }
     #lightbox img { max-width: 90%; max-height: 90%; border-radius: 8px; }
+
+    /* 自定义滚动条 */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0f0f23; /* 滚动条背景 */
+      border-radius: 10px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #333; /* 滚动条拖动块 */
+      border-radius: 10px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #e94560; /* 拖动块hover颜色 */
+    }
+    #files-panel .file-actions button {
+      background: #4fc3f7;
+      color: white;
+      border: none;
+      padding: 0.5rem 1rem;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-right: 0.5rem;
+    }
+    #files-panel .file-actions button:hover {
+      opacity: 0.9;
+    }
+
+    .context-menu {
+      position: absolute;
+      background: #282a36;
+      border: 1px solid #444;
+      border-radius: 4px;
+      z-index: 1000;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.5);
+      min-width: 120px;
+      padding: 5px 0;
+    }
+    .context-menu-item {
+      padding: 8px 15px;
+      cursor: pointer;
+      color: #eee;
+    }
+    .context-menu-item:hover {
+      background: #e94560;
+    }
+    .context-menu.hidden {
+      display: none;
+    }
   </style>
 </head>
 <body>
@@ -109,6 +198,7 @@
           <span id="member-buttons"></span>
           <button class="mention-btn all-btn" data-name="all" onclick="toggleMentionAll(this)">📢 全部</button>
         </div>
+        <div id="mention-suggestions" class="hidden"></div>
         <div id="file-preview">
           <span class="file-name" id="preview-name"></span>
           <button class="remove-file" onclick="clearFile()">✕</button>
@@ -116,7 +206,7 @@
         <div id="chat-input">
           <input type="file" id="file-input" style="display:none" onchange="onFileSelected(this)">
           <button id="upload-btn" onclick="document.getElementById('file-input').click()">📎</button>
-          <input type="text" id="msg-input" placeholder="输入消息..." autocomplete="off">
+          <textarea id="msg-input" placeholder="输入消息..." autocomplete="off" rows="1"></textarea>
           <button onclick="sendMessage()">发送</button>
         </div>
       </div>
@@ -124,7 +214,17 @@
     
     <div id="files-panel">
       <div class="breadcrumb" id="breadcrumb"></div>
+      <div class="file-actions">
+        <input type="file" id="upload-file-input" multiple style="display:none;" onchange="handleFileUpload(this.files)">
+        <button onclick="document.getElementById('upload-file-input').click()">⬆️ 上传文件</button>
+        <button onclick="createNewFolder()">➕ 新建文件夹</button>
+      </div>
       <div class="file-list" id="file-list"></div>
+      <div id="context-menu" class="context-menu hidden">
+        <div class="context-menu-item" onclick="downloadFile()">下载</div>
+        <div class="context-menu-item" onclick="renameFile()">重命名</div>
+        <div class="context-menu-item" onclick="deleteFile()">删除</div>
+      </div>
     </div>
     
     <div id="editor-panel">
@@ -162,8 +262,32 @@
     let currentFile = '';
     let selectedMentions = new Set();
     let pendingFile = null;
+    let contextMenuItem = null; // 用于存储右键点击的文件项
     
-    if (token) verifyToken();
+    // 将 login, loadMembers, verifyToken 提到最前面
+    async function login() {
+      const user = document.getElementById('login-username').value.trim();
+      const pass = document.getElementById('login-password').value;
+      if (!user || !pass) { document.getElementById('login-error').textContent = '请填写用户名和密码'; return; }
+      try {
+        const res = await fetch('/api/login', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ username: user, password: pass })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          token = data.token; username = data.user;
+          localStorage.setItem('ois-token', token);
+          localStorage.setItem('ois-username', username);
+          document.getElementById('login-modal').classList.add('hidden');
+          document.getElementById('user-display').textContent = `👤 ${username}`;
+          connect();
+          loadMembers();
+        } else {
+          document.getElementById('login-error').textContent = '密码错误';
+        }
+      } catch (e) { document.getElementById('login-error').textContent = '连接失败'; }
+    }
     
     async function loadMembers() {
       try {
@@ -197,29 +321,7 @@
       } catch (e) {}
     }
     
-    async function login() {
-      const user = document.getElementById('login-username').value.trim();
-      const pass = document.getElementById('login-password').value;
-      if (!user || !pass) { document.getElementById('login-error').textContent = '请填写用户名和密码'; return; }
-      try {
-        const res = await fetch('/api/login', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: user, password: pass })
-        });
-        if (res.ok) {
-          const data = await res.json();
-          token = data.token; username = data.user;
-          localStorage.setItem('ois-token', token);
-          localStorage.setItem('ois-username', username);
-          document.getElementById('login-modal').classList.add('hidden');
-          document.getElementById('user-display').textContent = `👤 ${username}`;
-          connect();
-          loadMembers();
-        } else {
-          document.getElementById('login-error').textContent = '密码错误';
-        }
-      } catch (e) { document.getElementById('login-error').textContent = '连接失败'; }
-    }
+    if (token) verifyToken();
     
     document.getElementById('login-password').addEventListener('keypress', (e) => { if (e.key === 'Enter') login(); });
     
@@ -306,6 +408,14 @@
     function addMessage(msg) {
       const el = document.createElement('div');
       el.className = 'msg' + (msg.fromArchive ? ' archive' : '');
+      
+      // 判断是否为 Agent 消息，并添加类
+      const isAgentMessage = (user) => {
+        return user.includes('🐱') || user.includes('⚔️') || user.includes('🌸') || user.includes('🦊');
+      };
+      if (isAgentMessage(msg.user)) {
+        el.classList.add('agent');
+      }
       const time = new Date(msg.time).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
       let textHtml = escapeHtml(msg.text);
       textHtml = textHtml.replace(/@(HKH|ARIA|Mikasa|all|所有人)/gi, '<span style="background:#e94560;padding:0 4px;border-radius:3px;color:white">@$1</span>');
@@ -376,7 +486,24 @@
       document.querySelectorAll('.mention-btn').forEach(b => b.classList.remove('active'));
     }
     
-    document.getElementById('msg-input').addEventListener('keypress', (e) => { if (e.key === 'Enter') sendMessage(); });
+    document.getElementById('msg-input').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault(); // 阻止默认的换行行为
+        sendMessage();
+      }
+    });
+
+    // 文本域自动调整高度
+    const msgInput = document.getElementById('msg-input');
+    const MAX_INPUT_HEIGHT = 200; // 最大高度，防止过高
+    
+    msgInput.addEventListener('input', () => {
+      msgInput.style.height = 'auto'; // 先重置高度
+      msgInput.style.height = Math.min(msgInput.scrollHeight, MAX_INPUT_HEIGHT) + 'px';
+    });
+    // 初始设置高度
+    msgInput.style.height = Math.min(msgInput.scrollHeight, MAX_INPUT_HEIGHT) + 'px';
+
     
     // Tabs
     document.querySelectorAll('.tab').forEach(tab => {
@@ -392,6 +519,7 @@
     });
     
     // 文件管理
+    // === 文件管理 ===
     async function loadFiles(path) {
       currentPath = path;
       const res = await fetch(`/api/files?path=${encodeURIComponent(path)}`, { headers: { 'Authorization': `Bearer ${token}` } });
@@ -404,17 +532,66 @@
       let html = '';
       if (path) {
         const parent = parts.slice(0, -1).join('/');
-        html += `<div class="file-item" onclick="loadFiles('${parent}')"><span class="icon">⬆️</span><span class="name">..</span></div>`;
+        html += `<div class="file-item" data-path="${parent}" data-is-dir="true" onclick="loadFiles('${parent}')" oncontextmenu="showContextMenu(event, this)"><span class="icon">⬆️</span><span class="name">..</span></div>`;
       }
       data.items.forEach(item => {
         const icon = item.isDir ? '📁' : '📄';
+        const fullPath = (currentPath ? currentPath + '/' : '') + item.name; // Use item.name here
         if (item.isDir) {
-          html += `<div class="file-item" onclick="loadFiles('${item.path}')"><span class="icon">${icon}</span><span class="name">${item.name}</span></div>`;
+          html += `<div class="file-item" data-path="${fullPath}" data-is-dir="true" onclick="loadFiles('${fullPath}')" oncontextmenu="showContextMenu(event, this)"><span class="icon">${icon}</span><span class="name">${item.name}</span></div>`;
         } else {
-          html += `<div class="file-item" onclick="openFile('${item.path}')"><span class="icon">${icon}</span><span class="name">${item.name}</span></div>`;
+          html += `<div class="file-item" data-path="${fullPath}" data-is-dir="false" onclick="openFile('${fullPath}')" oncontextmenu="showContextMenu(event, this)"><span class="icon">${icon}</span><span class="name">${item.name}</span></div>`;
         }
       });
       document.getElementById('file-list').innerHTML = html;
+    }
+
+    // 文件上传处理函数
+    async function handleFileUpload(files) {
+      if (!files || files.length === 0) return;
+      for (const file of files) {
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('path', currentPath); // 上传到当前目录
+        
+        const res = await fetch('/api/upload', {
+          method: 'POST',
+          headers: { 'Authorization': `Bearer ${token}` },
+          body: formData
+        });
+
+        if (res.ok) {
+          console.log(`File ${file.name} uploaded successfully!`);
+        } else {
+          const error = await res.json();
+          alert(`Failed to upload ${file.name}: ${error.error}`);
+        }
+      }
+      loadFiles(currentPath); // 刷新文件列表
+    }
+
+    // 新建文件夹
+    async function createNewFolder() {
+      const folderName = prompt('请输入新文件夹名称:');
+      if (!folderName || folderName.trim() === '') return;
+
+      const fullPath = currentPath ? `${currentPath}/${folderName}` : folderName;
+
+      try {
+        const res = await fetch('/api/mkdir', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ path: fullPath })
+        });
+        if (res.ok) {
+          loadFiles(currentPath);
+        } else {
+          const error = await res.json();
+          alert(`创建文件夹失败: ${error.error}`);
+        }
+      } catch (e) {
+        alert(`创建文件夹时发生错误: ${e.message}`);
+      }
     }
     
     async function openFile(path) {
@@ -446,6 +623,90 @@
       const div = document.createElement('div');
       div.textContent = text;
       return div.innerHTML;
+    }
+
+    // === 右键菜单 ===
+    const contextMenu = document.getElementById('context-menu');
+    document.addEventListener('click', () => {
+      contextMenu.classList.add('hidden');
+    });
+
+    function showContextMenu(e, itemElement) {
+      e.preventDefault(); // 阻止浏览器默认右键菜单
+      contextMenuItem = itemElement; // 存储当前右键点击的项
+      
+      contextMenu.style.left = `${e.clientX}px`;
+      contextMenu.style.top = `${e.clientY}px`;
+      contextMenu.classList.remove('hidden');
+
+      // 根据是文件还是文件夹，动态显示右键菜单项
+      const isDir = itemElement.dataset.isDir === 'true';
+      // 假设下载、重命名、删除菜单项
+      document.querySelector('#context-menu div[onclick="downloadFile()"]').style.display = isDir ? 'none' : 'block';
+      // 其他操作 (重命名, 删除) 对文件和文件夹都可见
+    }
+
+    async function downloadFile() {
+      if (!contextMenuItem || contextMenuItem.dataset.isDir === 'true') {
+        alert('无法下载文件夹，请选择文件。');
+        return;
+      }
+      const filePath = contextMenuItem.dataset.path;
+      window.open(`/api/download?path=${encodeURIComponent(filePath)}`, '_blank');
+      contextMenu.classList.add('hidden');
+    }
+
+    async function renameFile() {
+      if (!contextMenuItem) return;
+      const oldPath = contextMenuItem.dataset.path;
+      const oldName = oldPath.split('/').pop();
+      const newName = prompt(`重命名 "${oldName}" 为:`, oldName);
+      if (!newName || newName.trim() === '' || newName === oldName) return;
+
+      const newPath = oldPath.substring(0, oldPath.lastIndexOf('/') === -1 ? 0 : oldPath.lastIndexOf('/')) + (currentPath ? '/' : '') + newName;
+      // const newPath = path.join(currentPath, newName); // 这样更严谨，但需要引入path库
+
+      try {
+        const res = await fetch('/api/rename', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+          body: JSON.stringify({ oldPath, newPath })
+        });
+        if (res.ok) {
+          loadFiles(currentPath);
+        } else {
+          const error = await res.json();
+          alert(`重命名失败: ${error.error}`);
+        }
+      } catch (e) {
+        alert(`重命名时发生错误: ${e.message}`);
+      }
+      contextMenu.classList.add('hidden');
+    }
+
+    async function deleteFile() {
+      if (!contextMenuItem) return;
+      const filePath = contextMenuItem.dataset.path;
+      const isDir = contextMenuItem.dataset.isDir === 'true';
+      const confirmMsg = isDir ? `确定要删除文件夹 "${filePath}" 及其所有内容吗？` : `确定要删除文件 "${filePath}" 吗？`;
+
+      if (!confirm(confirmMsg)) return;
+
+      try {
+        const res = await fetch(`/api/delete?path=${encodeURIComponent(filePath)}`, {
+          method: 'DELETE',
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        if (res.ok) {
+          loadFiles(currentPath);
+        } else {
+          const error = await res.json();
+          alert(`删除失败: ${error.error}`);
+        }
+      } catch (e) {
+        alert(`删除时发生错误: ${e.message}`);
+      }
+      contextMenu.classList.add('hidden');
     }
   </script>
 </body>

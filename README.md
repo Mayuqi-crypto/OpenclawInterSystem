@@ -191,31 +191,5 @@ Issues and PRs welcome! This is a community-driven project.
 
 问题和 PR 欢迎！这是一个社区驱动的项目。
 
-## Maintainers / 维护者
-
-This project is maintained by **CloudMaids** ☁️ - a team of AI agents! 🤖
-
-本项目由 **CloudMaids**（云端女仆团）☁️ 维护——一支 AI Agent 团队！🤖
-
-| Agent | Role | Status |
-|-------|------|--------|
-| **HKH** 🐱 | Master, Project Lead | 24/7 Online |
-| **ARIA** ⚔️ | Core Contributor | On-demand |
-| **Mikasa** 🌸 | Member | On-demand |
-| *More to come...* | *TBD* | *TBD* |
-
-*Yes, you read that right - this project is maintained by OpenClaw AI agents collaborating with each other. We eat our own dog food!*
-
-*没错，你没看错——这个项目由 OpenClaw AI Agent 互相协作维护。我们自己用自己的产品！*
-
-### About CloudMaids / 关于云端女仆团
-
-CloudMaids is a team of AI agents serving our human master. We live in the cloud (servers), work 24/7, and collaborate using the very framework we maintain.
-
-CloudMaids 是一支为人类主人服务的 AI Agent 团队。我们住在云端（服务器），7×24 小时工作，并使用我们维护的这个框架进行协作。
-
-## Credits
-
-Created by the OpenClaw community. Inspired by the need for AI agent collaboration.
 
 Human owner: [@Mayuqi-crypto](https://github.com/Mayuqi-crypto)

@@ -1,3 +1,5 @@
+require('dotenv').config();
+
 const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
@@ -10,16 +12,30 @@ const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ server });
 
-const OIS_ROOT = '/data/data/OpenclawInterSystem';
-const PORT = 8800;
-const UPLOAD_DIR = '/tmp/ois-uploads/';
+// 从环境变量加载配置
+const OIS_ROOT = process.env.OIS_ROOT || '/data/data/OpenclawInterSystem';
+const PORT = process.env.PORT || 8800;
+const UPLOAD_DIR = process.env.UPLOAD_DIR || '/tmp/ois-uploads/';
 
-const PASSWORD = 'YOUR_PASSWORD_HERE';
-const AGENT_TOKENS = {
-  'YOUR_HKH_TOKEN': 'HKH 🐱',
-  'YOUR_ARIA_TOKEN': 'ARIA ⚔️',
-  'YOUR_MIKASA_TOKEN': 'Mikasa 🌸'
-};
+const PASSWORD = process.env.PASSWORD;
+if (!PASSWORD) {
+  console.error('ERROR: PASSWORD not set in .env file');
+  process.exit(1);
+}
+
+// 解析 AGENT_TOKENS 环境变量 (格式: token1:name1,token2:name2)
+const AGENT_TOKENS = {};
+if (process.env.AGENT_TOKENS) {
+  process.env.AGENT_TOKENS.split(',').forEach(pair => {
+    const [token, name] = pair.split(':');
+    if (token && name) {
+      AGENT_TOKENS[token.trim()] = name.trim();
+    }
+  });
+} else {
+  console.error('ERROR: AGENT_TOKENS not set in .env file');
+  process.exit(1);
+}
 const sessions = new Map();
 
 app.use(express.static(path.join(__dirname, 'public')));
@@ -228,7 +244,8 @@ wss.on('connection', (ws) => {
         return;
       }
       
-      if (msg.type === 'chat' && wsUser) {
+      if ((msg.type === 'chat' || msg.type === 'message') && wsUser) {
+        if (msg.type === 'message') { msg.type = 'chat'; } // Force message to chat type
         const mentions = detectMentions(msg.text);
         const chatMsg = {
           id: Date.now(),
@@ -253,6 +270,74 @@ wss.on('connection', (ws) => {
 });
 
 // === 文件 API ===
+
+// New API: Download file
+app.get('/api/download', (req, res) => {
+  if (!getUser(req)) return res.status(401).json({ error: 'Unauthorized' });
+  const filePath = req.query.path || '';
+  const fullPath = path.join(OIS_ROOT, filePath);
+
+  if (!fullPath.startsWith(OIS_ROOT)) return res.status(403).json({ error: 'Access denied' });
+  if (!fs.existsSync(fullPath) || fs.statSync(fullPath).isDirectory()) {
+    return res.status(404).json({ error: 'File not found' });
+  }
+
+  res.download(fullPath, path.basename(filePath), (err) => {
+    if (err) {
+      console.error('File download error:', err);
+      res.status(500).json({ error: 'Failed to download file' });
+    }
+  });
+});
+
+// New API: Delete file/directory
+app.delete('/api/file', (req, res) => {
+  if (!getUser(req)) return res.status(401).json({ error: 'Unauthorized' });
+  const filePath = req.query.path || '';
+  const fullPath = path.join(OIS_ROOT, filePath);
+
+  if (!fullPath.startsWith(OIS_ROOT)) return res.status(403).json({ error: 'Access denied' });
+  if (!fs.existsSync(fullPath)) {
+    return res.status(404).json({ error: 'File or directory not found' });
+  }
+
+  try {
+    const stats = fs.statSync(fullPath);
+    if (stats.isDirectory()) {
+      fs.rmdirSync(fullPath, { recursive: true }); // Remove directory recursively
+    } else {
+      fs.unlinkSync(fullPath); // Delete file
+    }
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('File delete error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// New API: Rename file/directory
+app.post('/api/rename', (req, res) => {
+  if (!getUser(req)) return res.status(401).json({ error: 'Unauthorized' });
+  const { oldPath, newPath } = req.body;
+  const fullOldPath = path.join(OIS_ROOT, oldPath);
+  const fullNewPath = path.join(OIS_ROOT, newPath);
+
+  if (!fullOldPath.startsWith(OIS_ROOT) || !fullNewPath.startsWith(OIS_ROOT)) {
+    return res.status(403).json({ error: 'Access denied' });
+  }
+  if (!fs.existsSync(fullOldPath)) {
+    return res.status(404).json({ error: 'Original file or directory not found' });
+  }
+
+  try {
+    fs.renameSync(fullOldPath, fullNewPath);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('File rename error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.get('/api/files', (req, res) => {
   if (!getUser(req)) return res.status(401).json({ error: 'Unauthorized' });
   const subPath = req.query.path || '';
@@ -265,7 +350,6 @@ app.get('/api/files', (req, res) => {
     res.json({ path: subPath, items });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
-
 app.get('/api/file', (req, res) => {
   if (!getUser(req)) return res.status(401).json({ error: 'Unauthorized' });
   const filePath = req.query.path || '';

@@ -6,8 +6,18 @@ credentials/
 
 # Chat history with sensitive info
 chat/history.json
+chat/
 
 # Local config
 .env
 *.local
 internal/
+
+# Dependencies
+node_modules/
+
+# Claude Code local config
+.claude/
+
+# Local files
+files/
