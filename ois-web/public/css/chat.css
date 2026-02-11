@@ -1,0 +1,37 @@
+#chat-panel { flex: 1; display: flex; flex-direction: column; padding: 1rem; }
+#messages { flex: 1; overflow-y: auto; padding: 1rem; background: #0f0f23; border-radius: 8px; margin-bottom: 1rem; }
+.msg { margin-bottom: 0.75rem; padding: 0.5rem; background: #16213e; border-radius: 6px; }
+.msg.archive { opacity: 0.7; border-left: 3px solid #444; }
+.msg .meta { font-size: 0.8rem; color: #888; margin-bottom: 0.25rem; }
+.msg .meta .user { color: #e94560; font-weight: bold; }
+.msg.agent { background: #0d1222; border-left: 3px solid #4fc3f7; }
+.msg.agent .meta .user { color: #4fc3f7; }
+.msg .text { word-wrap: break-word; white-space: pre-wrap; }
+.msg .attachment { margin-top: 0.5rem; }
+.msg .attachment img { max-width: 300px; max-height: 200px; border-radius: 6px; cursor: pointer; }
+.msg .attachment a { color: #4fc3f7; text-decoration: none; }
+.msg .attachment a:hover { text-decoration: underline; }
+
+#chat-input-area { display: flex; flex-direction: column; gap: 0.5rem; position: relative; }
+#mention-bar { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; background: #16213e; border-radius: 6px; flex-wrap: wrap; }
+#mention-suggestions { position: absolute; bottom: 100%; left: 0; right: 0; max-height: 200px; overflow-y: auto; background: #0f0f23; border-radius: 6px; box-shadow: 0 -2px 10px rgba(0,0,0,0.3); z-index: 10; padding: 0.5rem 0; }
+#mention-suggestions.hidden { display: none; }
+.mention-suggestion-item { padding: 0.5rem 1rem; cursor: pointer; color: #eee; }
+.mention-suggestion-item:hover, .mention-suggestion-item.active { background: #e94560; color: white; }
+#mention-bar label { font-size: 0.85rem; color: #888; margin-right: 0.25rem; }
+.mention-btn { padding: 0.3rem 0.6rem; border: 1px solid #333; border-radius: 4px; background: transparent; color: #aaa; cursor: pointer; font-size: 0.85rem; transition: all 0.2s; }
+.mention-btn:hover { border-color: #e94560; color: #e94560; }
+.mention-btn.active { background: #e94560; color: white; border-color: #e94560; }
+.mention-btn.all-btn { margin-left: 0.5rem; border-color: #ff9800; color: #ff9800; }
+.mention-btn.all-btn:hover, .mention-btn.all-btn.active { background: #ff9800; color: white; border-color: #ff9800; }
+#chat-input { display: flex; gap: 0.5rem; }
+#chat-input input[type="text"] { flex: 1; padding: 0.75rem; border: none; border-radius: 6px; background: #16213e; color: white; font-size: 1rem; }
+#chat-input textarea#msg-input { flex: 1; padding: 0.75rem; border: none; border-radius: 6px; background: #16213e; color: white; font-size: 1rem; min-height: 40px; resize: vertical; overflow-y: auto; }
+#chat-input button { padding: 0.75rem 1rem; background: #e94560; border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 0.9rem; }
+#chat-input button:hover { opacity: 0.9; }
+#upload-btn { background: #333; }
+#upload-btn:hover { background: #444; }
+#file-preview { display: none; padding: 0.5rem; background: #16213e; border-radius: 6px; align-items: center; gap: 0.5rem; }
+#file-preview.active { display: flex; }
+#file-preview .file-name { flex: 1; font-size: 0.85rem; color: #aaa; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#file-preview .remove-file { background: none; border: none; color: #e94560; cursor: pointer; font-size: 1.2rem; }

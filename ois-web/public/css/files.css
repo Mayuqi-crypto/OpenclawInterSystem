@@ -1,0 +1,28 @@
+#files-panel { flex: 1; display: none; flex-direction: column; padding: 1rem; }
+#files-panel.active { display: flex; }
+.breadcrumb { background: #16213e; padding: 0.75rem; border-radius: 6px; margin-bottom: 1rem; }
+.breadcrumb a { color: #e94560; text-decoration: none; cursor: pointer; }
+.file-list { flex: 1; overflow-y: auto; background: #0f0f23; border-radius: 8px; }
+.file-item { padding: 0.75rem 1rem; border-bottom: 1px solid #1a1a2e; display: flex; align-items: center; cursor: pointer; }
+.file-item:hover { background: #16213e; }
+.file-item .icon { margin-right: 0.75rem; font-size: 1.2rem; }
+.file-item .name { flex: 1; }
+.file-item .file-meta { color: #666; font-size: 0.8rem; margin-left: 1rem; }
+
+#editor-panel { flex: 1; display: none; flex-direction: column; padding: 1rem; }
+#editor-panel.active { display: flex; }
+#editor-header { display: flex; justify-content: space-between; margin-bottom: 1rem; }
+#editor-path { color: #888; }
+#editor-actions button { margin-left: 0.5rem; padding: 0.5rem 1rem; border: none; border-radius: 4px; cursor: pointer; }
+#editor-save { background: #e94560; color: white; }
+#editor-close { background: #333; color: white; }
+#editor-content { flex: 1; width: 100%; background: #0f0f23; color: #eee; border: none; border-radius: 8px; padding: 1rem; font-family: monospace; font-size: 14px; resize: none; }
+
+#files-panel .file-actions { display: flex; gap: 0.5rem; margin-bottom: 1rem; }
+#files-panel .file-actions button { background: #4fc3f7; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; }
+#files-panel .file-actions button:hover { opacity: 0.9; }
+
+.context-menu { position: absolute; background: #282a36; border: 1px solid #444; border-radius: 4px; z-index: 1000; box-shadow: 0 2px 10px rgba(0,0,0,0.5); min-width: 120px; padding: 5px 0; }
+.context-menu-item { padding: 8px 15px; cursor: pointer; color: #eee; }
+.context-menu-item:hover { background: #e94560; }
+.context-menu.hidden { display: none; }

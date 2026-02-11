@@ -1,0 +1,64 @@
+/* Health Dashboard */
+#health-panel { flex: 1; display: none; flex-direction: column; padding: 1rem; gap: 1rem; }
+#health-panel.active { display: flex; }
+.health-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 1rem; }
+.agent-card { background: #16213e; border-radius: 8px; padding: 1rem; position: relative; }
+.agent-card .agent-name { font-size: 1.1rem; font-weight: bold; margin-bottom: 0.5rem; }
+.agent-card .agent-meta { font-size: 0.85rem; color: #888; }
+.agent-card .agent-meta span { display: block; margin-top: 0.25rem; }
+.agent-card .status-dot { position: absolute; top: 1rem; right: 1rem; width: 12px; height: 12px; border-radius: 50%; }
+.agent-card .status-dot.online { background: #4caf50; box-shadow: 0 0 6px #4caf50; }
+.agent-card .status-dot.offline { background: #f44336; }
+.agent-card .agent-actions { margin-top: 0.75rem; display: flex; gap: 0.5rem; }
+.agent-card .agent-actions button { padding: 0.3rem 0.6rem; border: 1px solid #444; border-radius: 4px; background: transparent; color: #aaa; cursor: pointer; font-size: 0.8rem; }
+.agent-card .agent-actions button:hover { border-color: #4fc3f7; color: #4fc3f7; }
+
+/* Tasks Panel */
+#tasks-panel { flex: 1; display: none; flex-direction: column; padding: 1rem; gap: 1rem; }
+#tasks-panel.active { display: flex; }
+.task-header { display: flex; justify-content: space-between; align-items: center; }
+.task-header h2 { font-size: 1.2rem; }
+.task-header button { padding: 0.5rem 1rem; background: #e94560; border: none; border-radius: 6px; color: white; cursor: pointer; }
+.task-list { flex: 1; overflow-y: auto; background: #0f0f23; border-radius: 8px; }
+.task-item { padding: 0.75rem 1rem; border-bottom: 1px solid #1a1a2e; display: flex; align-items: center; gap: 0.75rem; }
+.task-item:hover { background: #16213e; }
+.task-item .task-status { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+.task-item .task-status.pending { background: #ff9800; }
+.task-item .task-status.in_progress { background: #4fc3f7; }
+.task-item .task-status.completed { background: #4caf50; }
+.task-item .task-status.overdue { background: #f44336; }
+.task-item .task-info { flex: 1; }
+.task-item .task-title { font-weight: bold; }
+.task-item .task-meta { font-size: 0.8rem; color: #888; }
+.task-item .task-actions { display: flex; gap: 0.5rem; }
+.task-item .task-actions button { padding: 0.25rem 0.5rem; border: 1px solid #444; border-radius: 4px; background: transparent; color: #aaa; cursor: pointer; font-size: 0.75rem; }
+.task-item .task-actions button:hover { border-color: #e94560; color: #e94560; }
+
+/* Memory Panel */
+#memory-panel { flex: 1; display: none; flex-direction: column; padding: 1rem; gap: 1rem; }
+#memory-panel.active { display: flex; }
+.memory-tabs { display: flex; gap: 0.5rem; margin-bottom: 0.5rem; }
+.memory-tab { padding: 0.4rem 0.8rem; border: 1px solid #333; border-radius: 4px; background: transparent; color: #aaa; cursor: pointer; }
+.memory-tab.active { background: #e94560; color: white; border-color: #e94560; }
+.memory-search { display: flex; gap: 0.5rem; }
+.memory-search input { flex: 1; padding: 0.5rem; border: none; border-radius: 6px; background: #16213e; color: white; }
+.memory-search button { padding: 0.5rem 1rem; background: #e94560; border: none; border-radius: 6px; color: white; cursor: pointer; }
+.memory-list { flex: 1; overflow-y: auto; background: #0f0f23; border-radius: 8px; }
+.memory-item { padding: 0.75rem 1rem; border-bottom: 1px solid #1a1a2e; }
+.memory-item:hover { background: #16213e; }
+.memory-item .memory-key { color: #4fc3f7; font-weight: bold; font-size: 0.9rem; }
+.memory-item .memory-content { margin-top: 0.25rem; white-space: pre-wrap; }
+.memory-item .memory-meta { font-size: 0.75rem; color: #666; margin-top: 0.25rem; }
+
+/* Task Create Modal */
+.modal-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); z-index: 150; align-items: center; justify-content: center; }
+.modal-overlay.active { display: flex; }
+.modal-content { background: #16213e; padding: 1.5rem; border-radius: 12px; min-width: 350px; max-width: 500px; }
+.modal-content h3 { margin-bottom: 1rem; }
+.modal-content label { display: block; font-size: 0.85rem; color: #888; margin-top: 0.75rem; }
+.modal-content input, .modal-content select, .modal-content textarea { width: 100%; padding: 0.5rem; border: none; border-radius: 6px; background: #0f0f23; color: white; margin-top: 0.25rem; }
+.modal-content textarea { min-height: 60px; resize: vertical; }
+.modal-actions { display: flex; gap: 0.5rem; margin-top: 1rem; justify-content: flex-end; }
+.modal-actions button { padding: 0.5rem 1rem; border: none; border-radius: 6px; cursor: pointer; }
+.modal-actions .btn-primary { background: #e94560; color: white; }
+.modal-actions .btn-secondary { background: #333; color: white; }

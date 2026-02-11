@@ -1,0 +1,38 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1a1a2e; color: #eee; height: 100vh; display: flex; flex-direction: column; }
+header { background: #16213e; padding: 1rem; display: flex; justify-content: space-between; align-items: center; }
+header h1 { font-size: 1.5rem; }
+header h1 span { color: #e94560; }
+.header-right { display: flex; align-items: center; gap: 1rem; }
+.user-info { color: #888; font-size: 0.9rem; }
+.tabs { display: flex; gap: 0.5rem; }
+.tab { background: transparent; border: none; color: #888; padding: 0.5rem 1rem; cursor: pointer; font-size: 1rem; border-radius: 4px; }
+.tab.active { background: #e94560; color: white; }
+main { flex: 1; display: flex; overflow: hidden; }
+
+/* Login */
+#login-modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); display: flex; align-items: center; justify-content: center; z-index: 100; }
+#login-modal.hidden { display: none; }
+#login-modal .modal { background: #16213e; padding: 2rem; border-radius: 12px; text-align: center; min-width: 300px; }
+#login-modal h2 { margin-bottom: 1rem; }
+#login-modal input { display: block; width: 100%; margin: 0.75rem 0; padding: 0.75rem; border: none; border-radius: 6px; font-size: 1rem; }
+#login-modal button { padding: 0.75rem 2rem; background: #e94560; border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 1rem; width: 100%; margin-top: 0.5rem; }
+#login-modal .error { color: #e94560; margin-top: 0.5rem; }
+
+/* Lightbox */
+#lightbox { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); z-index: 200; align-items: center; justify-content: center; cursor: pointer; }
+#lightbox.active { display: flex; }
+#lightbox img { max-width: 90%; max-height: 90%; border-radius: 8px; }
+
+/* Scrollbar */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: #0f0f23; border-radius: 10px; }
+::-webkit-scrollbar-thumb { background: #333; border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: #e94560; }
+
+/* Connection indicator */
+.conn-status { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+.conn-status.online { background: #4caf50; }
+.conn-status.offline { background: #f44336; }
+.conn-status.connecting { background: #ff9800; animation: pulse 1s infinite; }
+@keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }

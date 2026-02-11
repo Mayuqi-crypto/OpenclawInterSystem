@@ -4,192 +4,28 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>OIS - OpenClaw Inter-System</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #1a1a2e; color: #eee; height: 100vh; display: flex; flex-direction: column; }
-    header { background: #16213e; padding: 1rem; display: flex; justify-content: space-between; align-items: center; }
-    header h1 { font-size: 1.5rem; }
-    header h1 span { color: #e94560; }
-    .header-right { display: flex; align-items: center; gap: 1rem; }
-    .user-info { color: #888; font-size: 0.9rem; }
-    .tabs { display: flex; gap: 0.5rem; }
-    .tab { background: transparent; border: none; color: #888; padding: 0.5rem 1rem; cursor: pointer; font-size: 1rem; border-radius: 4px; }
-    .tab.active { background: #e94560; color: white; }
-    main { flex: 1; display: flex; overflow: hidden; }
-    
-    /* 聊天 */
-    #chat-panel { flex: 1; display: flex; flex-direction: column; padding: 1rem; }
-    #messages { flex: 1; overflow-y: auto; padding: 1rem; background: #0f0f23; border-radius: 8px; margin-bottom: 1rem; }
-    .msg { margin-bottom: 0.75rem; padding: 0.5rem; background: #16213e; border-radius: 6px; }
-    .msg.archive { opacity: 0.7; border-left: 3px solid #444; }
-    .msg .meta { font-size: 0.8rem; color: #888; margin-bottom: 0.25rem; }
-    .msg .meta .user { color: #e94560; font-weight: bold; }
-    .msg.agent {
-      background: #0d1222; /* 不同的背景色 */
-      border-left: 3px solid #4fc3f7; /* 强调边框 */
-    }
-    .msg.agent .meta .user {
-      color: #4fc3f7; /* Agent 用户名颜色 */
-    }
-    .msg .text { word-wrap: break-word; white-space: pre-wrap; }
-    .msg .attachment { margin-top: 0.5rem; }
-    .msg .attachment img { max-width: 300px; max-height: 200px; border-radius: 6px; cursor: pointer; }
-    .msg .attachment a { color: #4fc3f7; text-decoration: none; }
-    .msg .attachment a:hover { text-decoration: underline; }
-    
-    /* 输入区域 */
-    #chat-input-area { display: flex; flex-direction: column; gap: 0.5rem; position: relative; }
-    #mention-bar { display: flex; align-items: center; gap: 0.5rem; padding: 0.5rem; background: #16213e; border-radius: 6px; flex-wrap: wrap; }
-    #mention-suggestions {
-      position: absolute; /* 相对于父元素定位 */
-      bottom: 100%; /* 出现在输入框上方 */
-      left: 0;
-      right: 0;
-      max-height: 200px;
-      overflow-y: auto;
-      background: #0f0f23;
-      border-radius: 6px;
-      box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.3);
-      z-index: 10;
-      padding: 0.5rem 0;
-    }
-    #mention-suggestions.hidden {
-      display: none;
-    }
-    .mention-suggestion-item {
-      padding: 0.5rem 1rem;
-      cursor: pointer;
-      color: #eee;
-    }
-    .mention-suggestion-item:hover, .mention-suggestion-item.active {
-      background: #e94560;
-      color: white;
-    }
-    #mention-bar label { font-size: 0.85rem; color: #888; margin-right: 0.25rem; }
-    .mention-btn { padding: 0.3rem 0.6rem; border: 1px solid #333; border-radius: 4px; background: transparent; color: #aaa; cursor: pointer; font-size: 0.85rem; transition: all 0.2s; }
-    .mention-btn:hover { border-color: #e94560; color: #e94560; }
-    .mention-btn.active { background: #e94560; color: white; border-color: #e94560; }
-    .mention-btn.all-btn { margin-left: 0.5rem; border-color: #ff9800; color: #ff9800; }
-    .mention-btn.all-btn:hover, .mention-btn.all-btn.active { background: #ff9800; color: white; border-color: #ff9800; }
-    #chat-input { display: flex; gap: 0.5rem; }
-    #chat-input input[type="text"] { flex: 1; padding: 0.75rem; border: none; border-radius: 6px; background: #16213e; color: white; font-size: 1rem; }
-    #chat-input textarea#msg-input {
-      flex: 1; padding: 0.75rem; border: none; border-radius: 6px; background: #16213e; color: white; font-size: 1rem;
-      min-height: 40px; /* 保持与 input 差不多的高度 */
-      resize: vertical; /* 允许垂直拖拽调整大小 */
-      overflow-y: auto; /* 超出自动滚动 */
-    }
-    #chat-input button { padding: 0.75rem 1rem; background: #e94560; border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 0.9rem; }
-    #chat-input button:hover { opacity: 0.9; }
-    #upload-btn { background: #333; }
-    #upload-btn:hover { background: #444; }
-    #file-preview { display: none; padding: 0.5rem; background: #16213e; border-radius: 6px; align-items: center; gap: 0.5rem; }
-    #file-preview.active { display: flex; }
-    #file-preview .file-name { flex: 1; font-size: 0.85rem; color: #aaa; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    #file-preview .remove-file { background: none; border: none; color: #e94560; cursor: pointer; font-size: 1.2rem; }
-    
-    /* 文件 */
-    #files-panel { flex: 1; display: none; flex-direction: column; padding: 1rem; }
-    #files-panel.active { display: flex; }
-    #chat-panel.active { display: flex; }
-    #chat-panel:not(.active) { display: none; }
-    .breadcrumb { background: #16213e; padding: 0.75rem; border-radius: 6px; margin-bottom: 1rem; }
-    .breadcrumb a { color: #e94560; text-decoration: none; cursor: pointer; }
-    .file-list { flex: 1; overflow-y: auto; background: #0f0f23; border-radius: 8px; }
-    .file-item { padding: 0.75rem 1rem; border-bottom: 1px solid #1a1a2e; display: flex; align-items: center; cursor: pointer; }
-    .file-item:hover { background: #16213e; }
-    .file-item .icon { margin-right: 0.75rem; font-size: 1.2rem; }
-    .file-item .name { flex: 1; }
-    
-    /* 编辑器 */
-    #editor-panel { flex: 1; display: none; flex-direction: column; padding: 1rem; }
-    #editor-panel.active { display: flex; }
-    #editor-header { display: flex; justify-content: space-between; margin-bottom: 1rem; }
-    #editor-path { color: #888; }
-    #editor-actions button { margin-left: 0.5rem; padding: 0.5rem 1rem; border: none; border-radius: 4px; cursor: pointer; }
-    #editor-save { background: #e94560; color: white; }
-    #editor-close { background: #333; color: white; }
-    #editor-content { flex: 1; width: 100%; background: #0f0f23; color: #eee; border: none; border-radius: 8px; padding: 1rem; font-family: monospace; font-size: 14px; resize: none; }
-    
-    /* 登录 */
-    #login-modal { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); display: flex; align-items: center; justify-content: center; z-index: 100; }
-    #login-modal.hidden { display: none; }
-    #login-modal .modal { background: #16213e; padding: 2rem; border-radius: 12px; text-align: center; min-width: 300px; }
-    #login-modal h2 { margin-bottom: 1rem; }
-    #login-modal input { display: block; width: 100%; margin: 0.75rem 0; padding: 0.75rem; border: none; border-radius: 6px; font-size: 1rem; }
-    #login-modal button { padding: 0.75rem 2rem; background: #e94560; border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 1rem; width: 100%; margin-top: 0.5rem; }
-    #login-modal .error { color: #e94560; margin-top: 0.5rem; }
-
-    /* 图片灯箱 */
-    #lightbox { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.9); z-index: 200; align-items: center; justify-content: center; cursor: pointer; }
-    #lightbox.active { display: flex; }
-    #lightbox img { max-width: 90%; max-height: 90%; border-radius: 8px; }
-
-    /* 自定义滚动条 */
-    ::-webkit-scrollbar {
-      width: 8px;
-      height: 8px;
-    }
-    ::-webkit-scrollbar-track {
-      background: #0f0f23; /* 滚动条背景 */
-      border-radius: 10px;
-    }
-    ::-webkit-scrollbar-thumb {
-      background: #333; /* 滚动条拖动块 */
-      border-radius: 10px;
-    }
-    ::-webkit-scrollbar-thumb:hover {
-      background: #e94560; /* 拖动块hover颜色 */
-    }
-    #files-panel .file-actions button {
-      background: #4fc3f7;
-      color: white;
-      border: none;
-      padding: 0.5rem 1rem;
-      border-radius: 4px;
-      cursor: pointer;
-      margin-right: 0.5rem;
-    }
-    #files-panel .file-actions button:hover {
-      opacity: 0.9;
-    }
-
-    .context-menu {
-      position: absolute;
-      background: #282a36;
-      border: 1px solid #444;
-      border-radius: 4px;
-      z-index: 1000;
-      box-shadow: 0 2px 10px rgba(0,0,0,0.5);
-      min-width: 120px;
-      padding: 5px 0;
-    }
-    .context-menu-item {
-      padding: 8px 15px;
-      cursor: pointer;
-      color: #eee;
-    }
-    .context-menu-item:hover {
-      background: #e94560;
-    }
-    .context-menu.hidden {
-      display: none;
-    }
-  </style>
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/chat.css">
+  <link rel="stylesheet" href="/css/files.css">
+  <link rel="stylesheet" href="/css/panels.css">
 </head>
 <body>
   <header>
-    <h1>🐾 <span>OIS</span> - OpenClaw Inter-System</h1>
+    <h1><span id="conn-indicator" class="conn-status offline"></span> <span>OIS</span> - OpenClaw Inter-System</h1>
     <div class="header-right">
       <span class="user-info" id="user-display"></span>
       <div class="tabs">
         <button class="tab active" data-panel="chat">💬 群聊</button>
         <button class="tab" data-panel="files">📁 文件</button>
+        <button class="tab" data-panel="health">🏥 监控</button>
+        <button class="tab" data-panel="tasks">📋 任务</button>
+        <button class="tab" data-panel="memory">🧠 记忆</button>
       </div>
     </div>
   </header>
-  
+
   <main>
+    <!-- Chat Panel -->
     <div id="chat-panel" class="active">
       <div id="messages"></div>
       <div id="chat-input-area">
@@ -211,7 +47,8 @@
         </div>
       </div>
     </div>
-    
+
+    <!-- Files Panel -->
     <div id="files-panel">
       <div class="breadcrumb" id="breadcrumb"></div>
       <div class="file-actions">
@@ -226,7 +63,8 @@
         <div class="context-menu-item" onclick="deleteFile()">删除</div>
       </div>
     </div>
-    
+
+    <!-- Editor Panel -->
     <div id="editor-panel">
       <div id="editor-header">
         <span id="editor-path"></span>
@@ -237,8 +75,38 @@
       </div>
       <textarea id="editor-content"></textarea>
     </div>
+
+    <!-- Health Dashboard Panel -->
+    <div id="health-panel">
+      <h2>Agent 健康监控</h2>
+      <div class="health-grid" id="health-grid"></div>
+    </div>
+
+    <!-- Tasks Panel -->
+    <div id="tasks-panel">
+      <div class="task-header">
+        <h2>任务管理</h2>
+        <button onclick="showCreateTask()">+ 新建任务</button>
+      </div>
+      <div class="task-list" id="task-list"></div>
+    </div>
+
+    <!-- Memory Panel -->
+    <div id="memory-panel">
+      <div class="memory-tabs">
+        <button class="memory-tab active" data-scope="team" onclick="switchMemoryScope('team')">团队记忆</button>
+        <button class="memory-tab" data-scope="personal" onclick="switchMemoryScope(OIS.username || 'default')">个人记忆</button>
+      </div>
+      <div class="memory-search">
+        <input type="text" id="memory-search-input" placeholder="搜索记忆...">
+        <button onclick="searchMemory()">搜索</button>
+        <button onclick="addMemory()">+ 添加</button>
+      </div>
+      <div class="memory-list" id="memory-list"></div>
+    </div>
   </main>
-  
+
+  <!-- Login Modal -->
   <div id="login-modal">
     <div class="modal">
       <h2>🐾 OIS 登录</h2>
@@ -250,464 +118,41 @@
     </div>
   </div>
 
+  <!-- Lightbox -->
   <div id="lightbox" onclick="this.classList.remove('active')">
     <img id="lightbox-img" src="">
   </div>
 
-  <script>
-    let ws;
-    let token = localStorage.getItem('ois-token');
-    let username = localStorage.getItem('ois-username');
-    let currentPath = '';
-    let currentFile = '';
-    let selectedMentions = new Set();
-    let pendingFile = null;
-    let contextMenuItem = null; // 用于存储右键点击的文件项
-    
-    // 将 login, loadMembers, verifyToken 提到最前面
-    async function login() {
-      const user = document.getElementById('login-username').value.trim();
-      const pass = document.getElementById('login-password').value;
-      if (!user || !pass) { document.getElementById('login-error').textContent = '请填写用户名和密码'; return; }
-      try {
-        const res = await fetch('/api/login', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username: user, password: pass })
-        });
-        if (res.ok) {
-          const data = await res.json();
-          token = data.token; username = data.user;
-          localStorage.setItem('ois-token', token);
-          localStorage.setItem('ois-username', username);
-          document.getElementById('login-modal').classList.add('hidden');
-          document.getElementById('user-display').textContent = `👤 ${username}`;
-          connect();
-          loadMembers();
-        } else {
-          document.getElementById('login-error').textContent = '密码错误';
-        }
-      } catch (e) { document.getElementById('login-error').textContent = '连接失败'; }
-    }
-    
-    async function loadMembers() {
-      try {
-        const res = await fetch("/api/members", { headers: { "Authorization": "Bearer " + token } });
-        if (res.ok) {
-          const data = await res.json();
-          const container = document.getElementById("member-buttons");
-          if (container) {
-            container.innerHTML = data.members.map(m => 
-              `<button class="mention-btn" data-name="${m.name}" onclick="toggleMention(this)">${m.display}</button>`
-            ).join("");
-          }
-        }
-      } catch(e) {}
-    }
-    
-    async function verifyToken() {
-      try {
-        const res = await fetch('/api/verify', { headers: { 'Authorization': `Bearer ${token}` } });
-        if (res.ok) {
-          const data = await res.json();
-          username = data.user;
-          document.getElementById('login-modal').classList.add('hidden');
-          document.getElementById('user-display').textContent = `👤 ${username}`;
-          connect();
-          loadMembers();
-        } else {
-          localStorage.removeItem('ois-token');
-          token = null;
-        }
-      } catch (e) {}
-    }
-    
-    if (token) verifyToken();
-    
-    document.getElementById('login-password').addEventListener('keypress', (e) => { if (e.key === 'Enter') login(); });
-    
-    // === @提及 ===
-    function toggleMention(btn) {
-      const name = btn.dataset.name;
-      if (selectedMentions.has(name)) {
-        selectedMentions.delete(name);
-        btn.classList.remove('active');
-      } else {
-        selectedMentions.add(name);
-        btn.classList.add('active');
-      }
-      // 取消全选状态
-      const allBtn = document.querySelector('.all-btn');
-      if (selectedMentions.has('all') && name !== 'all') {
-        selectedMentions.delete('all');
-        allBtn.classList.remove('active');
-      }
-    }
-    
-    function toggleMentionAll(btn) {
-      if (selectedMentions.has('all')) {
-        selectedMentions.clear();
-        document.querySelectorAll('.mention-btn').forEach(b => b.classList.remove('active'));
-      } else {
-        selectedMentions.clear();
-        selectedMentions.add('all');
-        document.querySelectorAll('.mention-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-      }
-    }
-    
-    // === 文件上传 ===
-    function onFileSelected(input) {
-      if (input.files.length > 0) {
-        pendingFile = input.files[0];
-        document.getElementById('preview-name').textContent = `📎 ${pendingFile.name} (${(pendingFile.size/1024).toFixed(1)}KB)`;
-        document.getElementById('file-preview').classList.add('active');
-      }
-    }
-    
-    function clearFile() {
-      pendingFile = null;
-      document.getElementById('file-input').value = '';
-      document.getElementById('file-preview').classList.remove('active');
-    }
-    
-    async function uploadFile(file) {
-      const formData = new FormData();
-      formData.append('file', file);
-      const res = await fetch('/api/upload', {
-        method: 'POST',
-        headers: { 'Authorization': `Bearer ${token}` },
-        body: formData
-      });
-      if (res.ok) {
-        const data = await res.json();
-        return data.file;
-      }
-      return null;
-    }
-    
-    // === WebSocket ===
-    function connect() {
-      const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-      ws = new WebSocket(`${protocol}//${location.host}`);
-      ws.onopen = () => ws.send(JSON.stringify({ type: 'auth', token }));
-      ws.onmessage = (e) => {
-        const data = JSON.parse(e.data);
-        if (data.type === 'history') {
-          document.getElementById('messages').innerHTML = '';
-          data.messages.forEach(addMessage);
-        } else if (data.type === 'message') {
-          addMessage(data.message);
-        } else if (data.type === 'auth_fail') {
-          localStorage.removeItem('ois-token');
-          location.reload();
-        }
-      };
-      ws.onclose = () => setTimeout(connect, 3000);
-    }
-    
-    function addMessage(msg) {
-      const el = document.createElement('div');
-      el.className = 'msg' + (msg.fromArchive ? ' archive' : '');
-      
-      // 判断是否为 Agent 消息，并添加类
-      const isAgentMessage = (user) => {
-        return user.includes('🐱') || user.includes('⚔️') || user.includes('🌸') || user.includes('🦊');
-      };
-      if (isAgentMessage(msg.user)) {
-        el.classList.add('agent');
-      }
-      const time = new Date(msg.time).toLocaleString('zh-CN', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
-      let textHtml = escapeHtml(msg.text);
-      textHtml = textHtml.replace(/@(HKH|ARIA|Mikasa|all|所有人)/gi, '<span style="background:#e94560;padding:0 4px;border-radius:3px;color:white">@$1</span>');
-      
-      // 附件渲染
-      let attachHtml = '';
-      if (msg.attachments && msg.attachments.length > 0) {
-        msg.attachments.forEach(att => {
-          if (att.type && att.type.startsWith('image/')) {
-            attachHtml += `<div class="attachment"><img src="${att.url}" alt="${escapeHtml(att.name)}" onclick="showLightbox('${att.url}')"></div>`;
-          } else {
-            const sizeStr = att.size > 1024*1024 ? (att.size/1024/1024).toFixed(1)+'MB' : (att.size/1024).toFixed(1)+'KB';
-            attachHtml += `<div class="attachment"><a href="${att.url}" target="_blank">📎 ${escapeHtml(att.name)} (${sizeStr})</a></div>`;
-          }
-        });
-      }
-      
-      el.innerHTML = `<div class="meta"><span class="user">${escapeHtml(msg.user)}</span> · ${time}</div><div class="text">${textHtml}</div>${attachHtml}`;
-      document.getElementById('messages').appendChild(el);
-      document.getElementById('messages').scrollTop = 999999;
-    }
-    
-    function showLightbox(url) {
-      document.getElementById('lightbox-img').src = url;
-      document.getElementById('lightbox').classList.add('active');
-    }
-    
-    async function sendMessage() {
-      const input = document.getElementById('msg-input');
-      let text = input.value.trim();
-      
-      if (!text && !pendingFile) return;
-      if (!ws || ws.readyState !== WebSocket.OPEN) return;
-      
-      // 构建 mention 前缀
-      let mentionPrefix = '';
-      if (selectedMentions.size > 0) {
-        if (selectedMentions.has('all')) {
-          mentionPrefix = '@all ';
-        } else {
-          mentionPrefix = Array.from(selectedMentions).map(n => '@' + n).join(' ') + ' ';
-        }
-      }
-      text = mentionPrefix + text;
-      
-      // 上传文件
-      let attachments = undefined;
-      if (pendingFile) {
-        const fileInfo = await uploadFile(pendingFile);
-        if (fileInfo) {
-          attachments = [fileInfo];
-          if (!text.trim() || text.trim() === mentionPrefix.trim()) {
-            text = (mentionPrefix + '发送了文件: ' + fileInfo.name).trim();
-          }
-        }
-        clearFile();
-      }
-      
-      const msg = { type: 'chat', text };
-      if (selectedMentions.size > 0) msg.mentions = Array.from(selectedMentions);
-      if (attachments) msg.attachments = attachments;
-      
-      ws.send(JSON.stringify(msg));
-      input.value = '';
-      
-      // 清除选中的 mention
-      selectedMentions.clear();
-      document.querySelectorAll('.mention-btn').forEach(b => b.classList.remove('active'));
-    }
-    
-    document.getElementById('msg-input').addEventListener('keydown', (e) => {
-      if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault(); // 阻止默认的换行行为
-        sendMessage();
-      }
-    });
+  <!-- Task Create Modal -->
+  <div id="task-modal" class="modal-overlay">
+    <div class="modal-content">
+      <h3>新建任务</h3>
+      <label>标题</label>
+      <input type="text" id="task-title" placeholder="任务标题">
+      <label>指派给</label>
+      <input type="text" id="task-assignee" placeholder="Agent名称 (如 ARIA)">
+      <label>优先级</label>
+      <select id="task-priority">
+        <option value="low">低</option>
+        <option value="normal" selected>普通</option>
+        <option value="high">高</option>
+        <option value="urgent">紧急</option>
+      </select>
+      <label>截止时间</label>
+      <input type="datetime-local" id="task-deadline">
+      <div class="modal-actions">
+        <button class="btn-secondary" onclick="hideCreateTask()">取消</button>
+        <button class="btn-primary" onclick="createTask()">创建</button>
+      </div>
+    </div>
+  </div>
 
-    // 文本域自动调整高度
-    const msgInput = document.getElementById('msg-input');
-    const MAX_INPUT_HEIGHT = 200; // 最大高度，防止过高
-    
-    msgInput.addEventListener('input', () => {
-      msgInput.style.height = 'auto'; // 先重置高度
-      msgInput.style.height = Math.min(msgInput.scrollHeight, MAX_INPUT_HEIGHT) + 'px';
-    });
-    // 初始设置高度
-    msgInput.style.height = Math.min(msgInput.scrollHeight, MAX_INPUT_HEIGHT) + 'px';
-
-    
-    // Tabs
-    document.querySelectorAll('.tab').forEach(tab => {
-      tab.addEventListener('click', () => {
-        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-        tab.classList.add('active');
-        const panel = tab.dataset.panel;
-        document.getElementById('chat-panel').classList.toggle('active', panel === 'chat');
-        document.getElementById('files-panel').classList.toggle('active', panel === 'files');
-        document.getElementById('editor-panel').classList.remove('active');
-        if (panel === 'files') loadFiles('');
-      });
-    });
-    
-    // 文件管理
-    // === 文件管理 ===
-    async function loadFiles(path) {
-      currentPath = path;
-      const res = await fetch(`/api/files?path=${encodeURIComponent(path)}`, { headers: { 'Authorization': `Bearer ${token}` } });
-      const data = await res.json();
-      const parts = path.split('/').filter(Boolean);
-      let bc = '<a onclick="loadFiles(\'\')">📁 根目录</a>';
-      let acc = '';
-      parts.forEach(p => { acc += '/' + p; bc += ` / <a onclick="loadFiles('${acc}')">${p}</a>`; });
-      document.getElementById('breadcrumb').innerHTML = bc;
-      let html = '';
-      if (path) {
-        const parent = parts.slice(0, -1).join('/');
-        html += `<div class="file-item" data-path="${parent}" data-is-dir="true" onclick="loadFiles('${parent}')" oncontextmenu="showContextMenu(event, this)"><span class="icon">⬆️</span><span class="name">..</span></div>`;
-      }
-      data.items.forEach(item => {
-        const icon = item.isDir ? '📁' : '📄';
-        const fullPath = (currentPath ? currentPath + '/' : '') + item.name; // Use item.name here
-        if (item.isDir) {
-          html += `<div class="file-item" data-path="${fullPath}" data-is-dir="true" onclick="loadFiles('${fullPath}')" oncontextmenu="showContextMenu(event, this)"><span class="icon">${icon}</span><span class="name">${item.name}</span></div>`;
-        } else {
-          html += `<div class="file-item" data-path="${fullPath}" data-is-dir="false" onclick="openFile('${fullPath}')" oncontextmenu="showContextMenu(event, this)"><span class="icon">${icon}</span><span class="name">${item.name}</span></div>`;
-        }
-      });
-      document.getElementById('file-list').innerHTML = html;
-    }
-
-    // 文件上传处理函数
-    async function handleFileUpload(files) {
-      if (!files || files.length === 0) return;
-      for (const file of files) {
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('path', currentPath); // 上传到当前目录
-        
-        const res = await fetch('/api/upload', {
-          method: 'POST',
-          headers: { 'Authorization': `Bearer ${token}` },
-          body: formData
-        });
-
-        if (res.ok) {
-          console.log(`File ${file.name} uploaded successfully!`);
-        } else {
-          const error = await res.json();
-          alert(`Failed to upload ${file.name}: ${error.error}`);
-        }
-      }
-      loadFiles(currentPath); // 刷新文件列表
-    }
-
-    // 新建文件夹
-    async function createNewFolder() {
-      const folderName = prompt('请输入新文件夹名称:');
-      if (!folderName || folderName.trim() === '') return;
-
-      const fullPath = currentPath ? `${currentPath}/${folderName}` : folderName;
-
-      try {
-        const res = await fetch('/api/mkdir', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({ path: fullPath })
-        });
-        if (res.ok) {
-          loadFiles(currentPath);
-        } else {
-          const error = await res.json();
-          alert(`创建文件夹失败: ${error.error}`);
-        }
-      } catch (e) {
-        alert(`创建文件夹时发生错误: ${e.message}`);
-      }
-    }
-    
-    async function openFile(path) {
-      const res = await fetch(`/api/file?path=${encodeURIComponent(path)}`, { headers: { 'Authorization': `Bearer ${token}` } });
-      const data = await res.json();
-      currentFile = path;
-      document.getElementById('editor-path').textContent = path;
-      document.getElementById('editor-content').value = data.content;
-      document.getElementById('files-panel').classList.remove('active');
-      document.getElementById('editor-panel').classList.add('active');
-    }
-    
-    async function saveFile() {
-      const content = document.getElementById('editor-content').value;
-      await fetch('/api/file', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ path: currentFile, content })
-      });
-      alert('已保存!');
-    }
-    
-    function closeEditor() {
-      document.getElementById('editor-panel').classList.remove('active');
-      document.getElementById('files-panel').classList.add('active');
-    }
-    
-    function escapeHtml(text) {
-      const div = document.createElement('div');
-      div.textContent = text;
-      return div.innerHTML;
-    }
-
-    // === 右键菜单 ===
-    const contextMenu = document.getElementById('context-menu');
-    document.addEventListener('click', () => {
-      contextMenu.classList.add('hidden');
-    });
-
-    function showContextMenu(e, itemElement) {
-      e.preventDefault(); // 阻止浏览器默认右键菜单
-      contextMenuItem = itemElement; // 存储当前右键点击的项
-      
-      contextMenu.style.left = `${e.clientX}px`;
-      contextMenu.style.top = `${e.clientY}px`;
-      contextMenu.classList.remove('hidden');
-
-      // 根据是文件还是文件夹，动态显示右键菜单项
-      const isDir = itemElement.dataset.isDir === 'true';
-      // 假设下载、重命名、删除菜单项
-      document.querySelector('#context-menu div[onclick="downloadFile()"]').style.display = isDir ? 'none' : 'block';
-      // 其他操作 (重命名, 删除) 对文件和文件夹都可见
-    }
-
-    async function downloadFile() {
-      if (!contextMenuItem || contextMenuItem.dataset.isDir === 'true') {
-        alert('无法下载文件夹，请选择文件。');
-        return;
-      }
-      const filePath = contextMenuItem.dataset.path;
-      window.open(`/api/download?path=${encodeURIComponent(filePath)}`, '_blank');
-      contextMenu.classList.add('hidden');
-    }
-
-    async function renameFile() {
-      if (!contextMenuItem) return;
-      const oldPath = contextMenuItem.dataset.path;
-      const oldName = oldPath.split('/').pop();
-      const newName = prompt(`重命名 "${oldName}" 为:`, oldName);
-      if (!newName || newName.trim() === '' || newName === oldName) return;
-
-      const newPath = oldPath.substring(0, oldPath.lastIndexOf('/') === -1 ? 0 : oldPath.lastIndexOf('/')) + (currentPath ? '/' : '') + newName;
-      // const newPath = path.join(currentPath, newName); // 这样更严谨，但需要引入path库
-
-      try {
-        const res = await fetch('/api/rename', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-          body: JSON.stringify({ oldPath, newPath })
-        });
-        if (res.ok) {
-          loadFiles(currentPath);
-        } else {
-          const error = await res.json();
-          alert(`重命名失败: ${error.error}`);
-        }
-      } catch (e) {
-        alert(`重命名时发生错误: ${e.message}`);
-      }
-      contextMenu.classList.add('hidden');
-    }
-
-    async function deleteFile() {
-      if (!contextMenuItem) return;
-      const filePath = contextMenuItem.dataset.path;
-      const isDir = contextMenuItem.dataset.isDir === 'true';
-      const confirmMsg = isDir ? `确定要删除文件夹 "${filePath}" 及其所有内容吗？` : `确定要删除文件 "${filePath}" 吗？`;
-
-      if (!confirm(confirmMsg)) return;
-
-      try {
-        const res = await fetch(`/api/delete?path=${encodeURIComponent(filePath)}`, {
-          method: 'DELETE',
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        if (res.ok) {
-          loadFiles(currentPath);
-        } else {
-          const error = await res.json();
-          alert(`删除失败: ${error.error}`);
-        }
-      } catch (e) {
-        alert(`删除时发生错误: ${e.message}`);
-      }
-      contextMenu.classList.add('hidden');
-    }
-  </script>
+  <!-- Scripts -->
+  <script src="/js/app.js"></script>
+  <script src="/js/chat.js"></script>
+  <script src="/js/files.js"></script>
+  <script src="/js/health.js"></script>
+  <script src="/js/tasks.js"></script>
+  <script src="/js/memory.js"></script>
 </body>
 </html>
