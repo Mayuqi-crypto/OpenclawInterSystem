@@ -35,7 +35,7 @@ const AGENT_TOKEN = process.env.OIS_AGENT_TOKEN || "your-token-here";
 const MY_NAME = process.env.OIS_AGENT_NAME || "Agent";
 const GATEWAY_HOST = process.env.GATEWAY_HOST || "127.0.0.1";
 const GATEWAY_PORT = parseInt(process.env.GATEWAY_PORT || "18783");
-const GATEWAY_TOKEN = process.env.GATEWAY_TOKEN || "your-gateway-token-here";
+const GATEWAY_TOKEN = process.env.GATEWAY_TOKEN || "";
 const GATEWAY_MODE = process.env.OIS_GATEWAY_MODE || "wake";
 const CONTEXT_LINES = parseInt(process.env.OIS_CONTEXT_COUNT || "10");
 const REPLY_PORT = parseInt(process.env.OIS_REPLY_PORT || "18790");
@@ -69,8 +69,17 @@ if (REPLY_PORT > 0) {
       let body = "";
       req.on("data", chunk => body += chunk);
       req.on("end", () => {
+        console.log("[回复接口] 收到请求 body:", body.substring(0, 200));
         try {
-          const { text } = JSON.parse(body);
+          // 尝试解析 JSON，如果失败则把整个 body 当作纯文本发送
+          let text;
+          try {
+            const parsed = JSON.parse(body);
+            text = parsed.text;
+          } catch (parseErr) {
+            // JSON 解析失败，把 body 当纯文本
+            text = body.trim();
+          }
           if (!text) {
             res.writeHead(400);
             res.end(JSON.stringify({ error: "缺少 text 字段" }));
@@ -374,13 +383,21 @@ function connect() {
       if (checkMention(m)) {
         console.log(">>> 被 @ 了! mentions:", m.mentions);
 
-        // 构建通知文本：触发消息 + 上下文
+        // 构建通知文本：触发消息 + 上下文 + 回复指令
         let wakeText = `[OIS群聊] ${user} 说: ${text}`;
         if (attachments.length) {
           const urls = attachments.map(a => a.url || a.filename || "文件").join(", ");
           wakeText += `\n附件: ${urls}`;
         }
         wakeText += formatContext();
+
+        // 根据平台生成不同的回复指令
+        const isWindows = process.platform === 'win32';
+        const replyCmd = isWindows
+          ? `$body = @{ text = "你的回复内容" } | ConvertTo-Json -Compress\nInvoke-RestMethod -Uri http://127.0.0.1:${REPLY_PORT}/send -Method POST -ContentType "application/json; charset=utf-8" -Body ([System.Text.Encoding]::UTF8.GetBytes($body))`
+          : `curl -X POST http://127.0.0.1:${REPLY_PORT}/send \\\n  -H "Content-Type: application/json; charset=utf-8" \\\n  -d '{"text":"你的回复内容"}'`;
+
+        wakeText += `\n\n--- 回复方法（必须执行） ---\n这是OIS群聊消息，不是Telegram。用exec执行以下命令回复：\n${replyCmd}\n返回ok=True表示发送成功。支持中文，会自动转义特殊字符。不要用Telegram。`;
 
         // 发送给 Gateway
         notifyGateway(wakeText);
